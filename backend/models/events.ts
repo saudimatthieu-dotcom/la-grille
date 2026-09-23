@@ -1,6 +1,16 @@
 import mongoose from "mongoose";
 
-const eventSchema = mongoose.Schema({
+const teamSchema = new mongoose.Schema({
+  name: String,
+  logo: String,
+});
+
+const participantSchema = new mongoose.Schema({
+  name: String,
+  photo: String,
+});
+
+const eventSchema = new mongoose.Schema({
   sport: {
     type: String,
     enum: ["football", "basket", "rugby", "handball", "f1", "cyclisme", "tennis"],
@@ -9,11 +19,11 @@ const eventSchema = mongoose.Schema({
   provider: String,
   externalId: String,
   competition: String,
-  homeTeam: { name: String, logo: String },
-  awayTeam: { name: String, logo: String },
-  participants: [{ name: String, photo: String }],
-  startsAt: { type: Date, required: true },
-  lockAt: { type: Date, required: true },
+  homeTeam: teamSchema,
+  awayTeam: teamSchema,
+  participants: [participantSchema],
+  startsAt: Date,
+  lockAt: Date,
   status: {
     type: String,
     enum: ["scheduled", "live", "finished", "cancelled"],
@@ -21,8 +31,9 @@ const eventSchema = mongoose.Schema({
   },
   ouLine: Number,
   result: mongoose.Schema.Types.Mixed,
-  popularity: { type: Number, default: 0 },
-}, { timestamps: true });
+  popularity: Number,
+});
 
-const Event = mongoose.model("Event", eventSchema);
+const Event = mongoose.model("events", eventSchema);
+
 export default Event;
