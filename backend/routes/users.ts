@@ -9,13 +9,13 @@ const router = express.Router();
 
 router.post("/signup", (req, res) => {
   if (!checkBody(req.body, ["username", "email", "password"])) {
-    res.json({ result: false, error: "Champs manquants ou vides" });
+    res.json({ result: false, error: "Missing or empty fields" });
     return;
   }
 
   User.findOne({ $or: [{ email: req.body.email }, { username: req.body.username }] }).then((data) => {
     if (data) {
-      res.json({ result: false, error: "Pseudo ou email déjà utilisé" });
+      res.json({ result: false, error: "Username or email already taken" });
       return;
     }
 
@@ -45,7 +45,7 @@ router.post("/signup", (req, res) => {
 
 router.post("/signin", (req, res) => {
   if (!checkBody(req.body, ["email", "password"])) {
-    res.json({ result: false, error: "Champs manquants ou vides" });
+    res.json({ result: false, error: "Missing or empty fields" });
     return;
   }
 
@@ -62,7 +62,7 @@ router.post("/signin", (req, res) => {
         },
       });
     } else {
-      res.json({ result: false, error: "Email ou mot de passe incorrect" });
+      res.json({ result: false, error: "Wrong email or password" });
     }
   });
 });

@@ -7,6 +7,7 @@ import logger from "morgan";
 import cors from "cors";
 
 import usersRouter from "./routes/users";
+import leaguesRouter from "./routes/leagues";
 
 const app = express();
 
@@ -17,5 +18,6 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
 app.use("/users", usersRouter);
+app.use("/leagues", leaguesRouter);
 
 export default app;
