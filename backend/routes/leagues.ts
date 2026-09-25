@@ -76,4 +76,18 @@ router.post("/join", (req, res) => {
     });
 });
 
+// GET /leagues/user/:token — my leagues
+router.get("/user/:token", (req, res) => {
+    User.findOne({ token: req.params.token }).then((user) => {
+        if (!user) {
+            res.json({ result: false, error: "User not found" });
+            return;
+        }
+
+        League.find({ "members.user": user._id }).then((leagues) => {
+            res.json({ result: true, leagues });
+        });
+    });
+});
+
 export default router;
