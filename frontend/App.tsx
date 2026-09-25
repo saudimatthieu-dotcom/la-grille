@@ -10,6 +10,7 @@ import WelcomeScreen from "./screens/WelcomeScreen";
 import SignUpScreen from "./screens/SignUpScreen";
 import SignInScreen from "./screens/SignInScreen";
 import HomeScreen from "./screens/HomeScreen";
+import LeaguesListScreen from "./screens/LeaguesListScreen";
 
 import { Provider, useSelector } from "react-redux";
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
@@ -40,6 +41,7 @@ export type RootStackParamList = {
 
 export type TabParamList = {
   Accueil: undefined;
+  Ligues: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -49,6 +51,7 @@ const Tab = createBottomTabNavigator<TabParamList>();
 
 const TAB_ICONS = {
   Accueil: "home-outline",
+  Ligues: "trophy-outline",
 } as const;
 
 function MainTabs() {
@@ -65,6 +68,7 @@ function MainTabs() {
       })}
     >
       <Tab.Screen name="Accueil" component={HomeScreen} />
+      <Tab.Screen name="Ligues" component={LeaguesListScreen} />
     </Tab.Navigator>
   );
 }
