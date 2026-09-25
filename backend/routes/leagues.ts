@@ -10,20 +10,20 @@ const router = express.Router();
 // POST /leagues — create
 router.post("/", (req, res) => {
     if (!checkBody(req.body, ["token", "name", "gridType"])) {
-        res.json({ result: false, error: "fields missing or empty" });
+        res.json({ result: false, error: "Missing or empty fields" });
         return;
     }
 
     const gridTypes = ["officielle", "classique", "exotique", "surmesure"];
 
     if (!gridTypes.includes(req.body.gridType)) {
-        res.json({ result: false, error: "Type de grille invalide" });
+        res.json({ result: false, error: "Invalid grid type" });
         return;
     }
 
     User.findOne({ token: req.body.token }).then((user) => {
         if (!user) {
-            res.json({ result: false, error: "user not found" });
+            res.json({ result: false, error: "User not found" });
             return;
         }
 
@@ -37,6 +37,41 @@ router.post("/", (req, res) => {
 
         newLeague.save().then((newDoc) => {
             res.json({ result: true, league: newDoc });
+        });
+    });
+});
+
+// POST /leagues/join — join
+router.post("/join", (req, res) => {
+    if (!checkBody(req.body, ["token", "code"])) {
+        res.json({ result: false, error: "Missing or empty fields" });
+        return;
+    }
+
+    User.findOne({ token: req.body.token }).then((user) => {
+        if (!user) {
+            res.json({ result: false, error: "User not found" });
+            return;
+        }
+
+        League.findOne({ code: req.body.code.toUpperCase() }).then((league) => {
+            if (!league) {
+                res.json({ result: false, error: "Invalid code" });
+                return;
+            }
+
+            const isMember = league.members.some((member) => member.user?.equals(user._id));
+
+            if (isMember) {
+                res.json({ result: false, error: "Already a member of this league" });
+                return;
+            }
+
+            league.members.push({ user: user._id });
+
+            league.save().then((updatedLeague) => {
+                res.json({ result: true, league: updatedLeague });
+            });
         });
     });
 });
