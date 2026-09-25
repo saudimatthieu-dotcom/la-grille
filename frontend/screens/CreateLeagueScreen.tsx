@@ -16,6 +16,7 @@ export default function CreateLeagueScreen({ navigation }: Props) {
   const [name, setName] = useState("");
   const [gridType, setGridType] = useState("officielle");
   const [error, setError] = useState("");
+  const [code, setCode] = useState("");
 
   const handleCreate = () => {
     setError("");
@@ -24,6 +25,25 @@ export default function CreateLeagueScreen({ navigation }: Props) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token, name, gridType }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.result) {
+          navigation.goBack();
+        } else {
+          setError(data.error);
+        }
+      })
+      .catch(() => setError("Impossible to connect to server"));
+  };
+
+  const handleJoin = () => {
+    setError("");
+
+    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/leagues/join`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, code }),
     })
       .then((response) => response.json())
       .then((data) => {
@@ -83,7 +103,21 @@ export default function CreateLeagueScreen({ navigation }: Props) {
         <Text style={styles.title}>CRÉER UNE LIGUE</Text>
       </View>
 
-      <Text style={styles.label}>Nom de la ligue</Text>
+      <Text style={styles.label}>Rejoins une ligue avec un code</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Ex : P6HAK2"
+        placeholderTextColor={colors.muted}
+        value={code}
+        onChangeText={setCode}
+        autoCapitalize="characters"
+      />
+
+      <TouchableOpacity style={styles.button} onPress={handleJoin}>
+        <Text style={styles.buttonText}>REJOINDRE</Text>
+      </TouchableOpacity>
+
+      <Text style={styles.label}>Ou crée ta ligue : nom de la ligue</Text>
       <TextInput
         style={styles.input}
         placeholder="Ex : Les copains"
