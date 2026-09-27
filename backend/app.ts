@@ -8,6 +8,7 @@ import cors from "cors";
 
 import usersRouter from "./routes/users";
 import leaguesRouter from "./routes/leagues";
+import gridsRouter from "./routes/grids";
 
 const app = express();
 
@@ -19,5 +20,6 @@ app.use(cookieParser());
 
 app.use("/users", usersRouter);
 app.use("/leagues", leaguesRouter);
+app.use("/grids", gridsRouter);
 
 export default app;
