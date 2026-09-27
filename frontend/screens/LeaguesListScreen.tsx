@@ -48,7 +48,11 @@ export default function LeaguesListScreen({ navigation }: Props) {
     const gridType = GRID_TYPES.find((type) => type.value === league.gridType);
 
     return (
-      <View key={league._id} style={styles.card}>
+      <TouchableOpacity
+        key={league._id}
+        style={styles.card}
+        onPress={() => navigation.navigate("League", { leagueId: league._id, leagueName: league.name })}
+      >
         <View style={styles.cardIcon}>
           <Ionicons name={gridType?.icon ?? "trophy-outline"} size={26} color={colors.accent} />
         </View>
@@ -60,7 +64,7 @@ export default function LeaguesListScreen({ navigation }: Props) {
             {league.members.length} membres · code {league.code}
           </Text>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   });
 

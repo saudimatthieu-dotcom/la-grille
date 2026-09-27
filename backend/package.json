@@ -5,7 +5,8 @@
   "scripts": {
     "start": "tsx ./bin/www.ts",
     "dev": "tsx watch ./bin/www.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "seed": "tsx data/seed.ts"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

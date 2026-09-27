@@ -34,6 +34,8 @@ const eventSchema = new mongoose.Schema({
   popularity: Number,
 });
 
+eventSchema.index({ provider: 1, externalId: 1 }, { unique: true });
+
 const Event = mongoose.model("events", eventSchema);
 
 export default Event;

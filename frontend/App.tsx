@@ -12,6 +12,8 @@ import SignInScreen from "./screens/SignInScreen";
 import HomeScreen from "./screens/HomeScreen";
 import LeaguesListScreen from "./screens/LeaguesListScreen";
 import CreateLeagueScreen from "./screens/CreateLeagueScreen";
+import LeagueScreen from "./screens/LeagueScreen";
+
 
 import { Provider, useSelector } from "react-redux";
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
@@ -39,6 +41,7 @@ export type RootStackParamList = {
   SignIn: undefined;
   MainTabs: undefined;
   CreateLeague: undefined;
+  League: { leagueId: string; leagueName: string };
 };
 
 export type TabParamList = {
@@ -94,6 +97,8 @@ function RootNavigator() {
       <Stack.Screen name="SignIn" component={SignInScreen} />
       <Stack.Screen name="MainTabs" component={MainTabs} />
       <Stack.Screen name="CreateLeague" component={CreateLeagueScreen} />
+      <Stack.Screen name="League" component={LeagueScreen} />
+
     </Stack.Navigator>
   );
 }
