@@ -7,6 +7,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { RootState, RootStackParamList } from "../App";
 import { colors } from "../config/theme";
 import { SPORT_ICONS } from "../config/sports";
+import Countdown from "../components/Countdown";
 
 type Event = {
   _id: string;
@@ -25,6 +26,7 @@ export default function LeagueScreen({ navigation, route }: Props) {
 
   const [events, setEvents] = useState<Event[]>([]);
   const [error, setError] = useState("");
+  const [lockAt, setLockAt] = useState("");
 
   useEffect(() => {
     fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/grids/league/${leagueId}/current/${token}`)
@@ -32,6 +34,7 @@ export default function LeagueScreen({ navigation, route }: Props) {
       .then((data) => {
         if (data.result) {
           setEvents(data.grid.events);
+          setLockAt(data.grid.lockAt);
         } else {
           setError(data.error);
         }
@@ -75,6 +78,8 @@ export default function LeagueScreen({ navigation, route }: Props) {
       </View>
 
       <Text style={styles.subtitle}>Grille de la semaine · {events.length} matchs</Text>
+
+      {lockAt !== "" && <Countdown lockAt={lockAt} />}
 
       {error !== "" && <Text style={styles.error}>{error}</Text>}
 
