@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useSelector } from "react-redux";
 import { Ionicons } from "@expo/vector-icons";
@@ -7,6 +7,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { RootState, RootStackParamList } from "../App";
 import { colors } from "../config/theme";
 import Countdown from "../components/Countdown";
+import BonusBar from "../components/BonusBar";
 
 type Props = NativeStackScreenProps<RootStackParamList, "OverUnderPrediction">;
 
@@ -29,7 +30,8 @@ function ChoiceButton({ label, selected, onPress }: ChoiceProps) {
 }
 
 export default function OverUnderPredictionScreen({ navigation, route }: Props) {
-  const { gridId, event, payload } = route.params;
+  const { gridId, event, prediction } = route.params;
+  const payload = prediction?.payload;
   const token = useSelector((state: RootState) => state.user.value.token);
 
   // Pre-filled with my saved prediction
@@ -67,7 +69,7 @@ export default function OverUnderPredictionScreen({ navigation, route }: Props) 
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={28} color={colors.text} />
@@ -105,12 +107,14 @@ export default function OverUnderPredictionScreen({ navigation, route }: Props) 
         />
       </View>
 
+      <BonusBar predictionId={prediction?._id} initialBonus={prediction?.bonus} />
+
       {error !== "" && <Text style={styles.error}>{error}</Text>}
 
       <TouchableOpacity style={styles.button} onPress={handleSubmit}>
         <Text style={styles.buttonText}>VALIDER MON PRONO</Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -118,6 +122,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
+  },
+  content: {
     padding: 20,
     paddingTop: 64,
   },

@@ -8,6 +8,7 @@ import Prediction from "../models/predictions";
 import User from "../models/users";
 import { checkBody } from "../modules/checkBody";
 import { getWeek } from "../modules/getWeek";
+import { buildRanking } from "../modules/ranking";
 
 const router = express.Router();
 
@@ -89,7 +90,16 @@ router.get("/user/:token", (req, res) => {
         }
 
         League.find({ "members.user": user._id }).then((leagues) => {
-            res.json({ result: true, leagues });
+            // Adds my season points and rank to each league (for the home screen)
+            const myLeagues = leagues.map((league) => {
+                const me = league.members.find((member) => member.user?.equals(user._id));
+                const myPoints = me?.points ?? 0;
+                const myRank = league.members.filter((member) => member.points > myPoints).length + 1;
+
+                return { ...league.toObject(), myPoints, myRank };
+            });
+
+            res.json({ result: true, leagues: myLeagues });
         });
     });
 });
@@ -125,29 +135,14 @@ router.get("/:leagueId/ranking/:token", (req, res) => {
             const memberIds = league.members.map((member) => member.user);
 
             User.find({ _id: { $in: memberIds } }).then((users) => {
-                // Sorts the members by points and marks the leader and the last place
+                const members = users.map((member) => ({
+                    userId: String(member._id),
+                    username: member.username,
+                    avatar: member.avatar,
+                }));
+
                 const sendRanking = (pointsByUser: Record<string, number>) => {
-                    const rows = users
-                        .map((member) => ({
-                            userId: String(member._id),
-                            username: member.username,
-                            avatar: member.avatar,
-                            points: pointsByUser[String(member._id)] ?? 0,
-                        }))
-                        .sort((a, b) => b.points - a.points);
-
-                    const maxPoints = rows[0]?.points ?? 0;
-                    const minPoints = rows[rows.length - 1]?.points ?? 0;
-                    const hasGap = maxPoints > minPoints;
-
-                    const ranking = rows.map((row) => ({
-                        ...row,
-                        rank: rows.filter((other) => other.points > row.points).length + 1,
-                        isLeader: hasGap && row.points === maxPoints,
-                        isLastPlace: hasGap && row.points === minPoints,
-                    }));
-
-                    res.json({ result: true, scope, ranking });
+                    res.json({ result: true, scope, ranking: buildRanking(members, pointsByUser) });
                 };
 
                 if (scope === "season") {

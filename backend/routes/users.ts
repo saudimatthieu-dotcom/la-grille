@@ -67,4 +67,24 @@ router.post("/signin", (req, res) => {
   });
 });
 
+// GET /users/me/:token — my profile, with an up-to-date inventory
+router.get("/me/:token", (req, res) => {
+  User.findOne({ token: req.params.token }).then((data) => {
+    if (!data) {
+      res.json({ result: false, error: "User not found" });
+      return;
+    }
+
+    res.json({
+      result: true,
+      user: {
+        username: data.username,
+        email: data.email,
+        avatar: data.avatar,
+        inventory: data.inventory,
+      },
+    });
+  });
+});
+
 export default router;

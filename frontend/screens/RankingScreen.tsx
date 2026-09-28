@@ -43,6 +43,9 @@ export default function RankingScreen({ navigation, route }: Props) {
       .catch(() => setError("Impossible to connect to server"));
   }, [leagueId, token, scope]);
 
+  // The sabotage belongs to the lanterne rouge of the season ranking
+  const amLastPlace = scope === "season" && ranking.some((row) => row.username === username && row.isLastPlace);
+
   const rows = ranking.map((row) => {
     const isMe = row.username === username;
 
@@ -62,6 +65,17 @@ export default function RankingScreen({ navigation, route }: Props) {
         </View>
 
         <Text style={styles.points}>{row.points} pts</Text>
+
+        {amLastPlace && !isMe && (
+          <TouchableOpacity
+            style={styles.sabotageButton}
+            onPress={() =>
+              navigation.navigate("Sabotage", { leagueId, targetUserId: row.userId, targetUsername: row.username })
+            }
+          >
+            <MaterialCommunityIcons name="bomb" size={22} color={colors.danger} />
+          </TouchableOpacity>
+        )}
       </View>
     );
   });
@@ -92,6 +106,12 @@ export default function RankingScreen({ navigation, route }: Props) {
       </View>
 
       {error !== "" && <Text style={styles.error}>{error}</Text>}
+
+      {amLastPlace && (
+        <Text style={styles.sabotageHint}>
+          Tu es la lanterne rouge : touche la bombe d&apos;un rival pour saboter un de ses pronos (1 fois par semaine).
+        </Text>
+      )}
 
       {rows}
     </ScrollView>
@@ -199,5 +219,17 @@ const styles = StyleSheet.create({
     color: colors.accent,
     fontSize: 16,
     fontWeight: "900",
+  },
+  sabotageHint: {
+    color: colors.danger,
+    fontSize: 13,
+    fontWeight: "700",
+    marginBottom: 14,
+  },
+  sabotageButton: {
+    borderColor: colors.danger,
+    borderWidth: 1.5,
+    borderRadius: 10,
+    padding: 6,
   },
 });

@@ -74,7 +74,6 @@ export default function LeagueScreen({ navigation, route }: Props) {
 
   const matchRows = events.map((event) => {
     const prediction = predictions.find((item) => item.event === event._id);
-    const payload = prediction?.payload;
     const isFinished = event.status === "finished";
 
     const title =
@@ -101,11 +100,11 @@ export default function LeagueScreen({ navigation, route }: Props) {
           }
 
           if (event.sport === "football") {
-            navigation.navigate("FootballPrediction", { gridId, event, payload });
+            navigation.navigate("FootballPrediction", { gridId, event, prediction });
           } else if (event.sport === "basket" || event.sport === "rugby") {
-            navigation.navigate("OverUnderPrediction", { gridId, event, payload });
+            navigation.navigate("OverUnderPrediction", { gridId, event, prediction });
           } else if (event.sport === "f1" || event.sport === "tennis") {
-            navigation.navigate("PodiumPrediction", { gridId, event, payload });
+            navigation.navigate("PodiumPrediction", { gridId, event, prediction });
           }
         }}
       >
@@ -144,6 +143,9 @@ export default function LeagueScreen({ navigation, route }: Props) {
           onPress={() => navigation.navigate("Ranking", { leagueId, leagueName })}
         >
           <Ionicons name="podium-outline" size={24} color={colors.accent} />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate("Chat", { leagueId, leagueName })}>
+          <Ionicons name="chatbubbles-outline" size={24} color={colors.accent} />
         </TouchableOpacity>
       </View>
 

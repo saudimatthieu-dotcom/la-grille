@@ -7,6 +7,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { RootState, RootStackParamList } from "../App";
 import { colors } from "../config/theme";
 import Countdown from "../components/Countdown";
+import BonusBar from "../components/BonusBar";
 import type { PredictionPayload } from "../types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "PodiumPrediction">;
@@ -29,7 +30,8 @@ function initialPicks(payload?: PredictionPayload) {
 }
 
 export default function PodiumPredictionScreen({ navigation, route }: Props) {
-  const { gridId, event, payload } = route.params;
+  const { gridId, event, prediction } = route.params;
+  const payload = prediction?.payload;
   const token = useSelector((state: RootState) => state.user.value.token);
 
   const slotLabels = event.sport === "tennis" ? SLOT_LABELS.tennis : SLOT_LABELS.f1;
@@ -115,6 +117,8 @@ export default function PodiumPredictionScreen({ navigation, route }: Props) {
       <Text style={styles.hint}>Touche un nom pour le placer, touche-le encore pour le retirer.</Text>
 
       {participantRows}
+
+      <BonusBar predictionId={prediction?._id} initialBonus={prediction?.bonus} />
 
       {error !== "" && <Text style={styles.error}>{error}</Text>}
 

@@ -17,7 +17,9 @@ import FootballPredictionScreen from "./screens/FootballPredictionScreen";
 import OverUnderPredictionScreen from "./screens/OverUnderPredictionScreen";
 import PodiumPredictionScreen from "./screens/PodiumPredictionScreen";
 import RankingScreen from "./screens/RankingScreen";
-import type { PredictionPayload, SportEvent } from "./types";
+import SabotageScreen from "./screens/SabotageScreen";
+import ChatScreen from "./screens/ChatScreen";
+import type { Prediction, SportEvent } from "./types";
 
 import { Provider, useSelector } from "react-redux";
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
@@ -46,10 +48,12 @@ export type RootStackParamList = {
   MainTabs: undefined;
   CreateLeague: undefined;
   League: { leagueId: string; leagueName: string };
-  FootballPrediction: { gridId: string; event: SportEvent; payload?: PredictionPayload };
-  OverUnderPrediction: { gridId: string; event: SportEvent; payload?: PredictionPayload };
-  PodiumPrediction: { gridId: string; event: SportEvent; payload?: PredictionPayload };
+  FootballPrediction: { gridId: string; event: SportEvent; prediction?: Prediction };
+  OverUnderPrediction: { gridId: string; event: SportEvent; prediction?: Prediction };
+  PodiumPrediction: { gridId: string; event: SportEvent; prediction?: Prediction };
   Ranking: { leagueId: string; leagueName: string };
+  Sabotage: { leagueId: string; targetUserId: string; targetUsername: string };
+  Chat: { leagueId: string; leagueName: string };
 };
 
 export type TabParamList = {
@@ -110,6 +114,8 @@ function RootNavigator() {
       <Stack.Screen name="OverUnderPrediction" component={OverUnderPredictionScreen} />
       <Stack.Screen name="PodiumPrediction" component={PodiumPredictionScreen} />
       <Stack.Screen name="Ranking" component={RankingScreen} />
+      <Stack.Screen name="Sabotage" component={SabotageScreen} />
+      <Stack.Screen name="Chat" component={ChatScreen} />
     </Stack.Navigator>
   );
 }

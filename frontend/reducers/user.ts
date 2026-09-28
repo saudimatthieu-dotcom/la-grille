@@ -1,12 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
 
-type Inventory = {
-  doubleur: number;
-  assurance: number;
-  bouclier: number;
-  sabotage: number;
-};
+import type { Inventory } from "../types";
 
 type UserState = {
   value: {
@@ -41,6 +36,10 @@ export const userSlice = createSlice({
       state.value.avatar = action.payload.avatar ?? null;
       state.value.inventory = action.payload.inventory ?? null;
     },
+    // After a bonus is turned on/off, or when the profile is reloaded
+    updateInventory: (state, action: PayloadAction<Inventory>) => {
+      state.value.inventory = action.payload;
+    },
     logout: (state) => {
       state.value.token = null;
       state.value.username = null;
@@ -51,5 +50,5 @@ export const userSlice = createSlice({
   },
 });
 
-export const { login, logout } = userSlice.actions;
+export const { login, logout, updateInventory } = userSlice.actions;
 export default userSlice.reducer;

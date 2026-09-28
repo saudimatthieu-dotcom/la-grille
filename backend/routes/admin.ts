@@ -3,7 +3,10 @@ import express from "express";
 import Event from "../models/events";
 import Grid from "../models/grids";
 import League from "../models/leagues";
+import Message from "../models/messages";
 import Prediction from "../models/predictions";
+import Tactic from "../models/tactics";
+import User from "../models/users";
 import { applyTactics, scorePrediction } from "../modules/scoring";
 import type { Result } from "../modules/scoring";
 import { THESPORTSDB_COMPETITIONS } from "../config/competitions";
@@ -125,10 +128,53 @@ router.post("/score", (req, res) => {
         });
 
         Promise.all(updates).then(() => {
-          res.json({ result: true, scored: predictions.length });
+          // Every sabotage scored in this run gets its line in the league chat
+          const sabotaged = predictions.filter((prediction) => prediction.sabotagedBy);
+          const userIds = sabotaged.flatMap((prediction) => [prediction.sabotagedBy, prediction.user]);
+
+          User.find({ _id: { $in: userIds } }).then((users) => {
+            const nameOf = (id: unknown) => users.find((user) => user._id.equals(String(id)))?.username ?? "?";
+
+            const messages = sabotaged.map((prediction) => {
+              const grid = grids.find((item) => prediction.grid && item._id.equals(prediction.grid));
+              const actor = nameOf(prediction.sabotagedBy);
+              const target = nameOf(prediction.user);
+
+              return {
+                league: grid?.league,
+                type: "system",
+                text: prediction.shieldTriggered
+                  ? `🛡️ ${actor} a tenté de saboter ${target}, mais son Bouclier s'est activé !`
+                  : `💣 ${actor} a saboté ${target} : 0 point sur ce match !`,
+                meta: { kind: prediction.shieldTriggered ? "bouclier" : "sabotage" },
+              };
+            });
+
+            const sabotagedIds = sabotaged.map((prediction) => prediction._id);
+
+            Promise.all([
+              Message.insertMany(messages),
+              Tactic.updateMany({ prediction: { $in: sabotagedIds } }, { resolved: true }),
+            ]).then(() => {
+              res.json({ result: true, scored: predictions.length });
+            });
+          });
         });
       });
     });
+  });
+});
+
+// POST /admin/weekly-reset — Monday: the free doubleur of the week
+router.post("/weekly-reset", (req, res) => {
+  if (!isAdmin(req.body.secret)) {
+    res.json({ result: false, error: "Forbidden" });
+    return;
+  }
+
+  // $max: brings everyone up to at least 1 — an unused free doubleur doesn't pile up, bought ones are kept
+  User.updateMany({}, { $max: { "inventory.doubleur": 1 } }).then((update) => {
+    res.json({ result: true, updated: update.modifiedCount });
   });
 });
 

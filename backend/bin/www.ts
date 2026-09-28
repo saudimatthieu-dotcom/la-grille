@@ -15,6 +15,11 @@ server.listen(port);
 server.on("error", onError);
 server.on("listening", onListening);
 
+// Safety net: an error nobody caught in a .then() chain is logged instead of crashing the whole server
+process.on("unhandledRejection", (error) => {
+  console.error("Unhandled error:", error);
+});
+
 function normalizePort(val: string) {
   const port = parseInt(val, 10);
   if (isNaN(port)) return val;

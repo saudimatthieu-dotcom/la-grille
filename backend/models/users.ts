@@ -8,8 +8,9 @@ const userSchema = new mongoose.Schema({
   avatar: String,
   inventory: {
     doubleur: { type: Number, default: 0 },
-    assurance: { type: Number, default: 0 },
-    bouclier: { type: Number, default: 0 },
+    // Starting stock: 1 assurance + 1 bouclier at signup (then bought in the shop, later)
+    assurance: { type: Number, default: 1 },
+    bouclier: { type: Number, default: 1 },
     sabotage: { type: Number, default: 0 },
   },
   createdAt: { type: Date, default: Date.now },

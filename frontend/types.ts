@@ -30,9 +30,32 @@ export type PredictionPayload = {
   finalist?: string;
 };
 
+export type Bonus = {
+  doubleur: boolean;
+  assurance: boolean;
+  bouclier: boolean;
+};
+
 export type Prediction = {
   _id: string;
   event: string;
   payload: PredictionPayload;
+  bonus?: Bonus;
   points: number | null;
+};
+
+export type Inventory = {
+  doubleur: number;
+  assurance: number;
+  bouclier: number;
+  sabotage: number;
+};
+
+// One line of the league chat — user is null for system logs (sabotage, bouclier)
+export type ChatMessage = {
+  _id: string;
+  type: "chat" | "system";
+  text: string;
+  user: { _id: string; username: string } | null;
+  createdAt: string;
 };
