@@ -68,6 +68,10 @@ export default function SignInScreen({ navigation }: Props) {
         onChangeText={setPassword}
       />
 
+      <TouchableOpacity onPress={() => navigation.navigate("ForgotPassword")}>
+        <Text style={styles.forgot}>Mot de passe oublié ?</Text>
+      </TouchableOpacity>
+
       {error !== "" && <Text style={styles.error}>{error}</Text>}
 
       <TouchableOpacity style={styles.button} onPress={handleSubmit}>
@@ -101,6 +105,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
+    marginBottom: 12,
+  },
+  forgot: {
+    color: colors.muted,
+    textAlign: "right",
     marginBottom: 12,
   },
   error: {

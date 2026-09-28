@@ -9,6 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import WelcomeScreen from "./screens/WelcomeScreen";
 import SignUpScreen from "./screens/SignUpScreen";
 import SignInScreen from "./screens/SignInScreen";
+import ForgotPasswordScreen from "./screens/ForgotPasswordScreen";
 import HomeScreen from "./screens/HomeScreen";
 import LeaguesListScreen from "./screens/LeaguesListScreen";
 import CreateLeagueScreen from "./screens/CreateLeagueScreen";
@@ -45,6 +46,7 @@ export type RootStackParamList = {
   Welcome: undefined;
   SignUp: undefined;
   SignIn: undefined;
+  ForgotPassword: undefined;
   MainTabs: undefined;
   CreateLeague: undefined;
   League: { leagueId: string; leagueName: string };
@@ -107,6 +109,7 @@ function RootNavigator() {
       <Stack.Screen name="Welcome" component={WelcomeScreen} />
       <Stack.Screen name="SignUp" component={SignUpScreen} />
       <Stack.Screen name="SignIn" component={SignInScreen} />
+      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
       <Stack.Screen name="MainTabs" component={MainTabs} />
       <Stack.Screen name="CreateLeague" component={CreateLeagueScreen} />
       <Stack.Screen name="League" component={LeagueScreen} />

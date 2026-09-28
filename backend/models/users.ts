@@ -13,6 +13,10 @@ const userSchema = new mongoose.Schema({
     bouclier: { type: Number, default: 1 },
     sabotage: { type: Number, default: 0 },
   },
+  // Forgot password: the 6-digit code is stored hashed (like the password), valid 15 min, 5 tries max
+  resetCode: { type: String, default: null },
+  resetExpires: { type: Date, default: null },
+  resetAttempts: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now },
 });
 
