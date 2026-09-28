@@ -9,6 +9,7 @@ import cors from "cors";
 import usersRouter from "./routes/users";
 import leaguesRouter from "./routes/leagues";
 import gridsRouter from "./routes/grids";
+import adminRouter from "./routes/admin";
 import predictionsRouter from "./routes/predictions";
 
 const app = express();
@@ -23,5 +24,6 @@ app.use("/users", usersRouter);
 app.use("/leagues", leaguesRouter);
 app.use("/grids", gridsRouter);
 app.use("/predictions", predictionsRouter);
+app.use("/admin", adminRouter);
 
 export default app;
