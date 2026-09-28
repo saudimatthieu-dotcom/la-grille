@@ -10,6 +10,14 @@ export type SportEvent = {
   startsAt: string;
   lockAt: string;
   ouLine?: number;
+  status: "scheduled" | "live" | "finished" | "cancelled";
+  result?: {
+    homeScore?: number;
+    awayScore?: number;
+    podium?: string[];
+    winner?: string;
+    finalist?: string;
+  };
 };
 
 // What the player entered — the shape depends on the sport
@@ -26,4 +34,5 @@ export type Prediction = {
   _id: string;
   event: string;
   payload: PredictionPayload;
+  points: number | null;
 };
