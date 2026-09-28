@@ -58,6 +58,8 @@ export default function LeagueScreen({ navigation, route }: Props) {
         onPress={() => {
           if (event.sport === "football") {
             navigation.navigate("FootballPrediction", { gridId, event });
+          } else if (event.sport === "basket" || event.sport === "rugby") {
+            navigation.navigate("OverUnderPrediction", { gridId, event });
           }
         }}
       >
