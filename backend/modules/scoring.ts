@@ -130,3 +130,42 @@ export function scorePrediction(sport: string, payload: Payload, result: Result,
   }
   return 0;
 }
+
+// Best possible score per sport — the Assurance gives this
+export function maxPoints(sport: string) {
+  if (sport === "football" || sport === "tennis") {
+    return 3;
+  }
+  if (sport === "basket" || sport === "rugby") {
+    return 2;
+  }
+  if (sport === "f1" || sport === "cyclisme") {
+    return 6;
+  }
+  return 0;
+}
+
+export type Bonus = {
+  doubleur?: boolean;
+  assurance?: boolean;
+  bouclier?: boolean;
+};
+
+// Applies the tactics to the raw points of one prediction
+export function applyTactics(points: number, sport: string, bonus: Bonus, isSabotaged: boolean) {
+  if (isSabotaged && !bonus.bouclier) {
+    return 0;
+  }
+
+  let finalPoints = points;
+
+  if (bonus.assurance && finalPoints > 0) {
+    finalPoints = maxPoints(sport);
+  }
+
+  if (bonus.doubleur) {
+    finalPoints = finalPoints * 2;
+  }
+
+  return finalPoints;
+}

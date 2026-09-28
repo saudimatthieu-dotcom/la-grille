@@ -4,7 +4,7 @@ import Event from "../models/events";
 import Grid from "../models/grids";
 import League from "../models/leagues";
 import Prediction from "../models/predictions";
-import { scorePrediction } from "../modules/scoring";
+import { applyTactics, scorePrediction } from "../modules/scoring";
 import type { Result } from "../modules/scoring";
 import { THESPORTSDB_COMPETITIONS } from "../config/competitions";
 import { fetchUpcomingEvents, fetchEventResult } from "../providers/thesportsdb";
@@ -105,7 +105,12 @@ router.post("/score", (req, res) => {
             return Promise.resolve();
           }
 
-          const points = scorePrediction(event.sport, prediction.payload, event.result, event.ouLine ?? 0);
+          const rawPoints = scorePrediction(event.sport, prediction.payload, event.result, event.ouLine ?? 0);
+          const isSabotaged = Boolean(prediction.sabotagedBy);
+          const points = applyTactics(rawPoints, event.sport, prediction.bonus ?? {}, isSabotaged);
+
+          // Remembered for the chat log: "his Bouclier blocked the attack!"
+          prediction.shieldTriggered = isSabotaged && Boolean(prediction.bonus?.bouclier);
 
           prediction.points = points;
           prediction.scoredAt = new Date();
