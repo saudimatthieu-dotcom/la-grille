@@ -16,7 +16,7 @@ import LeagueScreen from "./screens/LeagueScreen";
 import FootballPredictionScreen from "./screens/FootballPredictionScreen";
 import OverUnderPredictionScreen from "./screens/OverUnderPredictionScreen";
 import PodiumPredictionScreen from "./screens/PodiumPredictionScreen";
-import type { SportEvent } from "./types";
+import type { PredictionPayload, SportEvent } from "./types";
 
 import { Provider, useSelector } from "react-redux";
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
@@ -45,9 +45,9 @@ export type RootStackParamList = {
   MainTabs: undefined;
   CreateLeague: undefined;
   League: { leagueId: string; leagueName: string };
-  FootballPrediction: { gridId: string; event: SportEvent };
-  OverUnderPrediction: { gridId: string; event: SportEvent };
-  PodiumPrediction: { gridId: string; event: SportEvent };
+  FootballPrediction: { gridId: string; event: SportEvent; payload?: PredictionPayload };
+  OverUnderPrediction: { gridId: string; event: SportEvent; payload?: PredictionPayload };
+  PodiumPrediction: { gridId: string; event: SportEvent; payload?: PredictionPayload };
 };
 
 export type TabParamList = {

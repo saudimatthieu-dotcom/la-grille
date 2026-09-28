@@ -48,4 +48,23 @@ router.post("/", (req, res) => {
   });
 });
 
+// GET /predictions/grid/:gridId/:token — my predictions for one grid
+router.get("/grid/:gridId/:token", (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.gridId)) {
+    res.json({ result: false, error: "Invalid id" });
+    return;
+  }
+
+  User.findOne({ token: req.params.token }).then((user) => {
+    if (!user) {
+      res.json({ result: false, error: "User not found" });
+      return;
+    }
+
+    Prediction.find({ user: user._id, grid: req.params.gridId }).then((predictions) => {
+      res.json({ result: true, predictions });
+    });
+  });
+});
+
 export default router;

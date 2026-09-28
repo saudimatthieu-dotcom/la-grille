@@ -16,11 +16,16 @@ function onlyDigits(text: string) {
 }
 
 export default function FootballPredictionScreen({ navigation, route }: Props) {
-  const { gridId, event } = route.params;
+  const { gridId, event, payload } = route.params;
   const token = useSelector((state: RootState) => state.user.value.token);
 
-  const [homeScore, setHomeScore] = useState("");
-  const [awayScore, setAwayScore] = useState("");
+  // Pre-filled with my saved prediction (!== undefined so that a 0 still counts)
+  const [homeScore, setHomeScore] = useState(
+    payload?.homeScore !== undefined ? String(payload.homeScore) : ""
+  );
+  const [awayScore, setAwayScore] = useState(
+    payload?.awayScore !== undefined ? String(payload.awayScore) : ""
+  );
   const [error, setError] = useState("");
 
   const handleSubmit = () => {

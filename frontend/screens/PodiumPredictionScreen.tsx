@@ -7,6 +7,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { RootState, RootStackParamList } from "../App";
 import { colors } from "../config/theme";
 import Countdown from "../components/Countdown";
+import type { PredictionPayload } from "../types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "PodiumPrediction">;
 
@@ -16,14 +17,25 @@ const SLOT_LABELS = {
   tennis: ["Vainqueur", "Finaliste"],
 };
 
+// Rebuild the ordered list of names from a saved prediction
+function initialPicks(payload?: PredictionPayload) {
+  if (payload?.podium) {
+    return payload.podium;
+  }
+  if (payload?.winner && payload?.finalist) {
+    return [payload.winner, payload.finalist];
+  }
+  return [];
+}
+
 export default function PodiumPredictionScreen({ navigation, route }: Props) {
-  const { gridId, event } = route.params;
+  const { gridId, event, payload } = route.params;
   const token = useSelector((state: RootState) => state.user.value.token);
 
   const slotLabels = event.sport === "tennis" ? SLOT_LABELS.tennis : SLOT_LABELS.f1;
   const participants = event.participants ?? [];
 
-  const [picks, setPicks] = useState<string[]>([]);
+  const [picks, setPicks] = useState<string[]>(initialPicks(payload));
   const [error, setError] = useState("");
 
   // Tap a name: add it to the next free slot, or remove it if already picked

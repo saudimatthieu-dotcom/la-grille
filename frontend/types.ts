@@ -11,3 +11,19 @@ export type SportEvent = {
   lockAt: string;
   ouLine?: number;
 };
+
+// What the player entered — the shape depends on the sport
+export type PredictionPayload = {
+  homeScore?: number;
+  awayScore?: number;
+  winner?: string;
+  overUnder?: "over" | "under";
+  podium?: string[];
+  finalist?: string;
+};
+
+export type Prediction = {
+  _id: string;
+  event: string;
+  payload: PredictionPayload;
+};

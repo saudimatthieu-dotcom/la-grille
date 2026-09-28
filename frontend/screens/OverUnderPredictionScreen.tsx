@@ -29,11 +29,12 @@ function ChoiceButton({ label, selected, onPress }: ChoiceProps) {
 }
 
 export default function OverUnderPredictionScreen({ navigation, route }: Props) {
-  const { gridId, event } = route.params;
+  const { gridId, event, payload } = route.params;
   const token = useSelector((state: RootState) => state.user.value.token);
 
-  const [winner, setWinner] = useState<Winner | null>(null);
-  const [overUnder, setOverUnder] = useState<OverUnder | null>(null);
+  // Pre-filled with my saved prediction
+  const [winner, setWinner] = useState<Winner | null>((payload?.winner as Winner | undefined) ?? null);
+  const [overUnder, setOverUnder] = useState<OverUnder | null>(payload?.overUnder ?? null);
   const [error, setError] = useState("");
 
   const handleSubmit = () => {

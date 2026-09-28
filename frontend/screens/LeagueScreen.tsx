@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { useIsFocused } from "@react-navigation/native";
 import { useSelector } from "react-redux";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -8,7 +9,7 @@ import type { RootState, RootStackParamList } from "../App";
 import { colors } from "../config/theme";
 import { SPORT_ICONS } from "../config/sports";
 import Countdown from "../components/Countdown";
-import type { SportEvent } from "../types";
+import type { Prediction, SportEvent } from "../types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "League">;
 
@@ -20,23 +21,43 @@ export default function LeagueScreen({ navigation, route }: Props) {
   const [error, setError] = useState("");
   const [lockAt, setLockAt] = useState("");
   const [gridId, setGridId] = useState("");
+  const [predictions, setPredictions] = useState<Prediction[]>([]);
 
+  const isFocused = useIsFocused();
+
+  // Runs every time the screen comes back into view, so a new prediction shows up right away
   useEffect(() => {
+    if (!isFocused) {
+      return;
+    }
+
     fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/grids/league/${leagueId}/current/${token}`)
       .then((response) => response.json())
       .then((data) => {
-        if (data.result) {
-          setEvents(data.grid.events);
-          setLockAt(data.grid.lockAt);
-          setGridId(data.grid._id);
-        } else {
+        if (!data.result) {
           setError(data.error);
+          return;
         }
+
+        setEvents(data.grid.events);
+        setLockAt(data.grid.lockAt);
+        setGridId(data.grid._id);
+
+        return fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/predictions/grid/${data.grid._id}/${token}`)
+          .then((response) => response.json())
+          .then((predictionData) => {
+            if (predictionData.result) {
+              setPredictions(predictionData.predictions);
+            }
+          });
       })
       .catch(() => setError("Impossible to connect to server"));
-  }, [leagueId, token]);
+  }, [isFocused, leagueId, token]);
 
   const matchRows = events.map((event) => {
+    const prediction = predictions.find((item) => item.event === event._id);
+    const payload = prediction?.payload;
+
     const title =
       event.homeTeam && event.awayTeam
         ? `${event.homeTeam.name} – ${event.awayTeam.name}`
@@ -57,11 +78,11 @@ export default function LeagueScreen({ navigation, route }: Props) {
         style={styles.row}
         onPress={() => {
           if (event.sport === "football") {
-            navigation.navigate("FootballPrediction", { gridId, event });
+            navigation.navigate("FootballPrediction", { gridId, event, payload });
           } else if (event.sport === "basket" || event.sport === "rugby") {
-            navigation.navigate("OverUnderPrediction", { gridId, event });
+            navigation.navigate("OverUnderPrediction", { gridId, event, payload });
           } else if (event.sport === "f1" || event.sport === "tennis") {
-            navigation.navigate("PodiumPrediction", { gridId, event });
+            navigation.navigate("PodiumPrediction", { gridId, event, payload });
           }
         }}
       >
@@ -70,6 +91,11 @@ export default function LeagueScreen({ navigation, route }: Props) {
           <Text style={styles.rowTitle}>{title}</Text>
           <Text style={styles.rowInfo}>{info}</Text>
         </View>
+        <Ionicons
+          name={prediction ? "checkmark-circle" : "ellipse-outline"}
+          size={22}
+          color={prediction ? colors.accent : colors.muted}
+        />
       </TouchableOpacity>
     );
   });
@@ -83,7 +109,9 @@ export default function LeagueScreen({ navigation, route }: Props) {
         <Text style={styles.title}>{leagueName.toUpperCase()}</Text>
       </View>
 
-      <Text style={styles.subtitle}>Grille de la semaine · {events.length} matchs</Text>
+      <Text style={styles.subtitle}>
+        Grille de la semaine · {predictions.length}/{events.length} pronos
+      </Text>
 
       {lockAt !== "" && <Countdown lockAt={lockAt} />}
 
