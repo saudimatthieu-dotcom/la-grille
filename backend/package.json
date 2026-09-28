@@ -6,7 +6,6 @@
     "start": "tsx ./bin/www.ts",
     "dev": "tsx watch ./bin/www.ts",
     "typecheck": "tsc --noEmit",
-    "seed": "tsx data/seed.ts",
     "test": "jest"
   },
   "jest": {
