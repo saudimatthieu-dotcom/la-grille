@@ -8,15 +8,7 @@ import type { RootState, RootStackParamList } from "../App";
 import { colors } from "../config/theme";
 import { SPORT_ICONS } from "../config/sports";
 import Countdown from "../components/Countdown";
-
-type Event = {
-  _id: string;
-  sport: keyof typeof SPORT_ICONS;
-  competition: string;
-  homeTeam?: { name: string };
-  awayTeam?: { name: string };
-  startsAt: string;
-};
+import type { SportEvent } from "../types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "League">;
 
@@ -24,9 +16,10 @@ export default function LeagueScreen({ navigation, route }: Props) {
   const { leagueId, leagueName } = route.params;
   const token = useSelector((state: RootState) => state.user.value.token);
 
-  const [events, setEvents] = useState<Event[]>([]);
+  const [events, setEvents] = useState<SportEvent[]>([]);
   const [error, setError] = useState("");
   const [lockAt, setLockAt] = useState("");
+  const [gridId, setGridId] = useState("");
 
   useEffect(() => {
     fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/grids/league/${leagueId}/current/${token}`)
@@ -35,6 +28,7 @@ export default function LeagueScreen({ navigation, route }: Props) {
         if (data.result) {
           setEvents(data.grid.events);
           setLockAt(data.grid.lockAt);
+          setGridId(data.grid._id);
         } else {
           setError(data.error);
         }
@@ -58,13 +52,21 @@ export default function LeagueScreen({ navigation, route }: Props) {
     const info = event.homeTeam ? `${event.competition} · ${date}` : date;
 
     return (
-      <View key={event._id} style={styles.row}>
+      <TouchableOpacity
+        key={event._id}
+        style={styles.row}
+        onPress={() => {
+          if (event.sport === "football") {
+            navigation.navigate("FootballPrediction", { gridId, event });
+          }
+        }}
+      >
         <Ionicons name={SPORT_ICONS[event.sport]} size={24} color={colors.accent} />
         <View style={styles.rowBody}>
           <Text style={styles.rowTitle}>{title}</Text>
           <Text style={styles.rowInfo}>{info}</Text>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   });
 

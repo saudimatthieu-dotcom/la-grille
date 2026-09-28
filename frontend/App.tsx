@@ -13,7 +13,8 @@ import HomeScreen from "./screens/HomeScreen";
 import LeaguesListScreen from "./screens/LeaguesListScreen";
 import CreateLeagueScreen from "./screens/CreateLeagueScreen";
 import LeagueScreen from "./screens/LeagueScreen";
-
+import FootballPredictionScreen from "./screens/FootballPredictionScreen";
+import type { SportEvent } from "./types";
 
 import { Provider, useSelector } from "react-redux";
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
@@ -42,6 +43,7 @@ export type RootStackParamList = {
   MainTabs: undefined;
   CreateLeague: undefined;
   League: { leagueId: string; leagueName: string };
+  FootballPrediction: { gridId: string; event: SportEvent };
 };
 
 export type TabParamList = {
@@ -98,6 +100,7 @@ function RootNavigator() {
       <Stack.Screen name="MainTabs" component={MainTabs} />
       <Stack.Screen name="CreateLeague" component={CreateLeagueScreen} />
       <Stack.Screen name="League" component={LeagueScreen} />
+      <Stack.Screen name="FootballPrediction" component={FootballPredictionScreen} />
 
     </Stack.Navigator>
   );
