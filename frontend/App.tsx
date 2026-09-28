@@ -20,6 +20,9 @@ import PodiumPredictionScreen from "./screens/PodiumPredictionScreen";
 import RankingScreen from "./screens/RankingScreen";
 import SabotageScreen from "./screens/SabotageScreen";
 import ChatScreen from "./screens/ChatScreen";
+import ResultScreen from "./screens/ResultScreen";
+import GridsScreen from "./screens/GridsScreen";
+import ProfileScreen from "./screens/ProfileScreen";
 import type { Prediction, SportEvent } from "./types";
 
 import { Provider, useSelector } from "react-redux";
@@ -56,11 +59,14 @@ export type RootStackParamList = {
   Ranking: { leagueId: string; leagueName: string };
   Sabotage: { leagueId: string; targetUserId: string; targetUsername: string };
   Chat: { leagueId: string; leagueName: string };
+  Result: { gridId: string; leagueId: string; leagueName: string };
 };
 
 export type TabParamList = {
   Accueil: undefined;
   Ligues: undefined;
+  Grille: undefined;
+  Profil: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -71,6 +77,8 @@ const Tab = createBottomTabNavigator<TabParamList>();
 const TAB_ICONS = {
   Accueil: "home-outline",
   Ligues: "trophy-outline",
+  Grille: "grid-outline",
+  Profil: "person-outline",
 } as const;
 
 function MainTabs() {
@@ -92,6 +100,8 @@ function MainTabs() {
         component={LeaguesListScreen}
         options={{ tabBarLabel: "Mes Ligues" }}
       />
+      <Tab.Screen name="Grille" component={GridsScreen} />
+      <Tab.Screen name="Profil" component={ProfileScreen} />
     </Tab.Navigator>
   );
 }
@@ -119,6 +129,7 @@ function RootNavigator() {
       <Stack.Screen name="Ranking" component={RankingScreen} />
       <Stack.Screen name="Sabotage" component={SabotageScreen} />
       <Stack.Screen name="Chat" component={ChatScreen} />
+      <Stack.Screen name="Result" component={ResultScreen} />
     </Stack.Navigator>
   );
 }

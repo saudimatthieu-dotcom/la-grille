@@ -8,6 +8,7 @@ import type { RootState, RootStackParamList } from "../App";
 import { colors } from "../config/theme";
 import Countdown from "../components/Countdown";
 import BonusBar from "../components/BonusBar";
+import TeamLogo from "../components/TeamLogo";
 
 type Props = NativeStackScreenProps<RootStackParamList, "FootballPrediction">;
 
@@ -72,6 +73,7 @@ export default function FootballPredictionScreen({ navigation, route }: Props) {
 
       <View style={styles.scoreRow}>
         <View style={styles.team}>
+          <TeamLogo logo={event.homeTeam?.logo} />
           <Text style={styles.teamName}>{event.homeTeam?.name}</Text>
           <TextInput
             style={styles.scoreInput}
@@ -87,6 +89,7 @@ export default function FootballPredictionScreen({ navigation, route }: Props) {
         <Text style={styles.separator}>–</Text>
 
         <View style={styles.team}>
+          <TeamLogo logo={event.awayTeam?.logo} />
           <Text style={styles.teamName}>{event.awayTeam?.name}</Text>
           <TextInput
             style={styles.scoreInput}
@@ -100,7 +103,7 @@ export default function FootballPredictionScreen({ navigation, route }: Props) {
         </View>
       </View>
 
-      <BonusBar predictionId={prediction?._id} initialBonus={prediction?.bonus} />
+      <BonusBar sport={event.sport} predictionId={prediction?._id} initialBonus={prediction?.bonus} />
 
       {error !== "" && <Text style={styles.error}>{error}</Text>}
 

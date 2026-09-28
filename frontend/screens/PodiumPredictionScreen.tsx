@@ -118,7 +118,7 @@ export default function PodiumPredictionScreen({ navigation, route }: Props) {
 
       {participantRows}
 
-      <BonusBar predictionId={prediction?._id} initialBonus={prediction?.bonus} />
+      <BonusBar sport={event.sport} predictionId={prediction?._id} initialBonus={prediction?.bonus} />
 
       {error !== "" && <Text style={styles.error}>{error}</Text>}
 

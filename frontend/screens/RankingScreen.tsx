@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useSelector } from "react-redux";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import type { RootState, RootStackParamList } from "../App";
 import { colors } from "../config/theme";
+import Avatar from "../components/Avatar";
+import LeagueHeader from "../components/LeagueHeader";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Ranking">;
 
@@ -14,7 +16,9 @@ type Scope = "week" | "season";
 type RankingRow = {
   userId: string;
   username: string;
+  avatar?: string | null;
   points: number;
+  weekPoints: number;
   rank: number;
   isLeader: boolean;
   isLastPlace: boolean;
@@ -52,6 +56,7 @@ export default function RankingScreen({ navigation, route }: Props) {
     return (
       <View key={row.userId} style={[styles.row, isMe && styles.rowMe, row.isLastPlace && styles.rowLast]}>
         <Text style={styles.rank}>{row.rank}</Text>
+        <Avatar avatar={row.avatar} username={row.username} />
 
         <View style={styles.rowBody}>
           <View style={styles.nameLine}>
@@ -64,7 +69,10 @@ export default function RankingScreen({ navigation, route }: Props) {
           {row.isLastPlace && <Text style={styles.lastBadge}>LANTERNE ROUGE</Text>}
         </View>
 
-        <Text style={styles.points}>{row.points} pts</Text>
+        <View style={styles.pointsBox}>
+          <Text style={styles.points}>{row.points} pts</Text>
+          {scope === "season" && row.weekPoints > 0 && <Text style={styles.delta}>+{row.weekPoints}</Text>}
+        </View>
 
         {amLastPlace && !isMe && (
           <TouchableOpacity
@@ -82,13 +90,7 @@ export default function RankingScreen({ navigation, route }: Props) {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={28} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>CLASSEMENT</Text>
-      </View>
-      <Text style={styles.subtitle}>{leagueName}</Text>
+      <LeagueHeader leagueId={leagueId} leagueName={leagueName} active="Ranking" />
 
       <View style={styles.toggle}>
         <TouchableOpacity
@@ -127,22 +129,6 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 64,
   },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  title: {
-    color: colors.text,
-    fontSize: 24,
-    fontWeight: "900",
-  },
-  subtitle: {
-    color: colors.muted,
-    fontSize: 14,
-    marginTop: 4,
-    marginBottom: 20,
-  },
   toggle: {
     flexDirection: "row",
     backgroundColor: colors.card,
@@ -175,7 +161,7 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
+    gap: 12,
     backgroundColor: colors.card,
     borderColor: colors.border,
     borderWidth: 1,
@@ -215,10 +201,19 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     marginTop: 4,
   },
+  pointsBox: {
+    alignItems: "flex-end",
+  },
   points: {
     color: colors.accent,
     fontSize: 16,
     fontWeight: "900",
+  },
+  delta: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: "800",
+    marginTop: 2,
   },
   sabotageHint: {
     color: colors.danger,

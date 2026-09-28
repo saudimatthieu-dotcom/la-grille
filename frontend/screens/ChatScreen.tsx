@@ -16,10 +16,12 @@ import { Ionicons } from "@expo/vector-icons";
 import type { RootState, RootStackParamList } from "../App";
 import { colors } from "../config/theme";
 import type { ChatMessage } from "../types";
+import Avatar from "../components/Avatar";
+import LeagueHeader from "../components/LeagueHeader";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Chat">;
 
-export default function ChatScreen({ navigation, route }: Props) {
+export default function ChatScreen({ route }: Props) {
   const { leagueId, leagueName } = route.params;
   const token = useSelector((state: RootState) => state.user.value.token);
   const username = useSelector((state: RootState) => state.user.value.username);
@@ -89,10 +91,13 @@ export default function ChatScreen({ navigation, route }: Props) {
     const time = new Date(message.createdAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
 
     return (
-      <View key={message._id} style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleOther]}>
-        {!isMe && <Text style={styles.author}>{message.user?.username}</Text>}
-        <Text style={[styles.text, isMe && styles.textMe]}>{message.text}</Text>
-        <Text style={[styles.time, isMe && styles.timeMe]}>{time}</Text>
+      <View key={message._id} style={[styles.messageRow, isMe && styles.messageRowMe]}>
+        {!isMe && <Avatar avatar={message.user?.avatar} username={message.user?.username} size={30} />}
+        <View style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleOther]}>
+          {!isMe && <Text style={styles.author}>{message.user?.username}</Text>}
+          <Text style={[styles.text, isMe && styles.textMe]}>{message.text}</Text>
+          <Text style={[styles.time, isMe && styles.timeMe]}>{time}</Text>
+        </View>
       </View>
     );
   });
@@ -100,13 +105,8 @@ export default function ChatScreen({ navigation, route }: Props) {
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : "height"}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={28} color={colors.text} />
-        </TouchableOpacity>
-        <View>
-          <Text style={styles.title}>COIN CHAMBRAGE</Text>
-          <Text style={styles.subtitle}>{leagueName}</Text>
-        </View>
+        <LeagueHeader leagueId={leagueId} leagueName={leagueName} active="Chat" />
+        <Text style={styles.title}>LE COIN CHAMBRAGE</Text>
       </View>
 
       <ScrollView
@@ -145,9 +145,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
   },
   header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
     paddingHorizontal: 20,
     paddingTop: 64,
     paddingBottom: 12,
@@ -156,12 +153,16 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: "900",
   },
-  subtitle: {
-    color: colors.muted,
-    fontSize: 13,
+  messageRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 8,
+  },
+  messageRowMe: {
+    justifyContent: "flex-end",
   },
   list: {
     flex: 1,
@@ -184,7 +185,7 @@ const styles = StyleSheet.create({
     marginVertical: 6,
   },
   bubble: {
-    maxWidth: "80%",
+    maxWidth: "78%",
     borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 8,

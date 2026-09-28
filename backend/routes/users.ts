@@ -4,6 +4,7 @@ import crypto from "crypto";
 import uid2 from "uid2";
 
 import User from "../models/users";
+import { AVATARS } from "../config/avatars";
 import { checkBody } from "../modules/checkBody";
 import { sendResetCode } from "../modules/sendResetCode";
 
@@ -168,6 +169,63 @@ router.get("/me/:token", (req, res) => {
         avatar: data.avatar,
         inventory: data.inventory,
       },
+    });
+  });
+});
+
+// PUT /users/me — change my username and/or my avatar (Profil tab)
+router.put("/me", (req, res) => {
+  if (!checkBody(req.body, ["token"])) {
+    res.json({ result: false, error: "Missing or empty fields" });
+    return;
+  }
+
+  const username = req.body.username !== undefined ? String(req.body.username).trim() : undefined;
+  const avatar = req.body.avatar;
+
+  if (username !== undefined && (username.length < 2 || username.length > 20)) {
+    res.json({ result: false, error: "Username must be 2 to 20 characters" });
+    return;
+  }
+
+  if (avatar !== undefined && !AVATARS.includes(avatar)) {
+    res.json({ result: false, error: "Invalid avatar" });
+    return;
+  }
+
+  User.findOne({ token: req.body.token }).then((user) => {
+    if (!user) {
+      res.json({ result: false, error: "User not found" });
+      return;
+    }
+
+    // Is the new username already someone else's?
+    const usernameTaken = username && username !== user.username ? User.findOne({ username }) : Promise.resolve(null);
+
+    usernameTaken.then((otherUser) => {
+      if (otherUser) {
+        res.json({ result: false, error: "Username already taken" });
+        return;
+      }
+
+      if (username) {
+        user.username = username;
+      }
+      if (avatar !== undefined) {
+        user.avatar = avatar;
+      }
+
+      user.save().then((savedUser) => {
+        res.json({
+          result: true,
+          user: {
+            username: savedUser.username,
+            email: savedUser.email,
+            avatar: savedUser.avatar,
+            inventory: savedUser.inventory,
+          },
+        });
+      });
     });
   });
 });

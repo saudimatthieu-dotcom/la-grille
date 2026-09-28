@@ -8,6 +8,7 @@ import type { RootState, RootStackParamList } from "../App";
 import { colors } from "../config/theme";
 import Countdown from "../components/Countdown";
 import BonusBar from "../components/BonusBar";
+import TeamLogo from "../components/TeamLogo";
 
 type Props = NativeStackScreenProps<RootStackParamList, "OverUnderPrediction">;
 
@@ -79,6 +80,18 @@ export default function OverUnderPredictionScreen({ navigation, route }: Props) 
 
       <Countdown lockAt={event.lockAt} />
 
+      <View style={styles.teams}>
+        <View style={styles.team}>
+          <TeamLogo logo={event.homeTeam?.logo} />
+          <Text style={styles.teamName}>{event.homeTeam?.name}</Text>
+        </View>
+        <Text style={styles.versus}>VS</Text>
+        <View style={styles.team}>
+          <TeamLogo logo={event.awayTeam?.logo} />
+          <Text style={styles.teamName}>{event.awayTeam?.name}</Text>
+        </View>
+      </View>
+
       <Text style={styles.question}>Qui gagne ?</Text>
       <View style={styles.choiceRow}>
         <ChoiceButton
@@ -107,7 +120,7 @@ export default function OverUnderPredictionScreen({ navigation, route }: Props) 
         />
       </View>
 
-      <BonusBar predictionId={prediction?._id} initialBonus={prediction?.bonus} />
+      <BonusBar sport={event.sport} predictionId={prediction?._id} initialBonus={prediction?.bonus} />
 
       {error !== "" && <Text style={styles.error}>{error}</Text>}
 
@@ -136,6 +149,29 @@ const styles = StyleSheet.create({
   title: {
     color: colors.text,
     fontSize: 22,
+    fontWeight: "900",
+  },
+  teams: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 16,
+    marginBottom: 24,
+  },
+  team: {
+    flex: 1,
+    alignItems: "center",
+    gap: 8,
+  },
+  teamName: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: "800",
+    textAlign: "center",
+  },
+  versus: {
+    color: colors.muted,
+    fontSize: 18,
     fontWeight: "900",
   },
   question: {

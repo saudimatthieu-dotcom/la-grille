@@ -9,25 +9,12 @@ import type { RootState, RootStackParamList } from "../App";
 import { colors } from "../config/theme";
 import { SPORT_ICONS } from "../config/sports";
 import Countdown from "../components/Countdown";
+import LeagueHeader from "../components/LeagueHeader";
+import ProgressBar from "../components/ProgressBar";
 import type { Prediction, SportEvent } from "../types";
+import { eventTitle, formatDate, formatResult } from "../utils/format";
 
 type Props = NativeStackScreenProps<RootStackParamList, "League">;
-
-// "2–1" for team sports, the podium for F1, the winner for tennis
-function formatResult(event: SportEvent) {
-  const result = event.result;
-
-  if (!result) {
-    return "";
-  }
-  if (result.podium) {
-    return result.podium.map((name, index) => `${index + 1}. ${name}`).join("  ");
-  }
-  if (result.winner) {
-    return `Vainqueur : ${result.winner}`;
-  }
-  return `${result.homeScore}–${result.awayScore}`;
-}
 
 export default function LeagueScreen({ navigation, route }: Props) {
   const { leagueId, leagueName } = route.params;
@@ -35,7 +22,6 @@ export default function LeagueScreen({ navigation, route }: Props) {
 
   const [events, setEvents] = useState<SportEvent[]>([]);
   const [error, setError] = useState("");
-  const [lockAt, setLockAt] = useState("");
   const [gridId, setGridId] = useState("");
   const [predictions, setPredictions] = useState<Prediction[]>([]);
 
@@ -56,7 +42,6 @@ export default function LeagueScreen({ navigation, route }: Props) {
         }
 
         setEvents(data.grid.events);
-        setLockAt(data.grid.lockAt);
         setGridId(data.grid._id);
 
         return fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/predictions/grid/${data.grid._id}/${token}`)
@@ -70,35 +55,49 @@ export default function LeagueScreen({ navigation, route }: Props) {
       .catch(() => setError("Impossible to connect to server"));
   }, [isFocused, leagueId, token]);
 
+  const now = Date.now();
   const weekPoints = predictions.reduce((total, prediction) => total + (prediction.points ?? 0), 0);
+  const hasResults = events.some((event) => event.status === "finished");
+
+  // The countdown goes to the next match that locks (the first one still open)
+  const nextLock = events
+    .map((event) => event.lockAt)
+    .filter((lockAt) => new Date(lockAt).getTime() > now)
+    .sort()[0];
 
   const matchRows = events.map((event) => {
     const prediction = predictions.find((item) => item.event === event._id);
     const isFinished = event.status === "finished";
+    const isLocked = !isFinished && new Date(event.lockAt).getTime() <= now;
 
-    const title =
-      event.homeTeam && event.awayTeam
-        ? `${event.homeTeam.name} – ${event.awayTeam.name}`
-        : event.competition;
-
-    const date = new Date(event.startsAt).toLocaleString("fr-FR", {
-      weekday: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
+    const date = formatDate(event.startsAt);
     const info = event.homeTeam ? `${event.competition} · ${date}` : date;
+
+    let status = (
+      <Ionicons
+        name={prediction ? "checkmark-circle" : "ellipse-outline"}
+        size={22}
+        color={prediction ? colors.accent : colors.muted}
+      />
+    );
+
+    if (isFinished) {
+      status = (
+        <View style={styles.resultBox}>
+          <Text style={styles.resultText}>{formatResult(event)}</Text>
+          <Text style={styles.points}>{prediction?.points != null ? `+${prediction.points} pts` : "—"}</Text>
+        </View>
+      );
+    } else if (isLocked) {
+      status = <Ionicons name="lock-closed" size={20} color={colors.muted} />;
+    }
 
     return (
       <TouchableOpacity
         key={event._id}
-        style={styles.row}
+        style={[styles.row, isLocked && styles.rowLocked]}
+        disabled={isFinished || isLocked}
         onPress={() => {
-          if (isFinished) {
-            return;
-          }
-
           if (event.sport === "football") {
             navigation.navigate("FootballPrediction", { gridId, event, prediction });
           } else if (event.sport === "basket" || event.sport === "rugby") {
@@ -110,52 +109,37 @@ export default function LeagueScreen({ navigation, route }: Props) {
       >
         <Ionicons name={SPORT_ICONS[event.sport]} size={24} color={colors.accent} />
         <View style={styles.rowBody}>
-          <Text style={styles.rowTitle}>{title}</Text>
+          <Text style={styles.rowTitle}>{eventTitle(event)}</Text>
           <Text style={styles.rowInfo}>{info}</Text>
         </View>
-        {isFinished ? (
-          <View style={styles.resultBox}>
-            <Text style={styles.resultText}>{formatResult(event)}</Text>
-            <Text style={styles.points}>
-              {prediction?.points != null ? `+${prediction.points} pts` : "—"}
-            </Text>
-          </View>
-        ) : (
-          <Ionicons
-            name={prediction ? "checkmark-circle" : "ellipse-outline"}
-            size={22}
-            color={prediction ? colors.accent : colors.muted}
-          />
-        )}
+        {status}
       </TouchableOpacity>
     );
   });
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={28} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>{leagueName.toUpperCase()}</Text>
-        <TouchableOpacity
-          style={styles.rankingButton}
-          onPress={() => navigation.navigate("Ranking", { leagueId, leagueName })}
-        >
-          <Ionicons name="podium-outline" size={24} color={colors.accent} />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate("Chat", { leagueId, leagueName })}>
-          <Ionicons name="chatbubbles-outline" size={24} color={colors.accent} />
-        </TouchableOpacity>
+      <LeagueHeader leagueId={leagueId} leagueName={leagueName} active="League" />
+
+      <Text style={styles.sectionTitle}>Grille de la semaine</Text>
+      <Text style={styles.subtitle}>
+        {predictions.length} / {events.length} pronostics · {weekPoints} pts cette semaine
+      </Text>
+      <View style={styles.progress}>
+        <ProgressBar value={predictions.length} max={events.length} />
       </View>
 
-      <Text style={styles.subtitle}>
-        Grille de la semaine · {predictions.length}/{events.length} pronos
-      </Text>
+      {nextLock && <Countdown lockAt={nextLock} />}
 
-      <Text style={styles.weekPoints}>Mes points cette semaine : {weekPoints}</Text>
-
-      {lockAt !== "" && <Countdown lockAt={lockAt} />}
+      {hasResults && (
+        <TouchableOpacity
+          style={styles.resultsButton}
+          onPress={() => navigation.navigate("Result", { gridId, leagueId, leagueName })}
+        >
+          <Ionicons name="stats-chart" size={18} color={colors.bg} />
+          <Text style={styles.resultsButtonText}>VOIR MES RÉSULTATS</Text>
+        </TouchableOpacity>
+      )}
 
       {error !== "" && <Text style={styles.error}>{error}</Text>}
 
@@ -173,24 +157,34 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 64,
   },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 8,
-  },
-  title: {
+  sectionTitle: {
     color: colors.text,
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: "900",
-  },
-  rankingButton: {
-    marginLeft: "auto",
   },
   subtitle: {
     color: colors.muted,
     fontSize: 14,
-    marginBottom: 20,
+    marginTop: 2,
+    marginBottom: 10,
+  },
+  progress: {
+    marginBottom: 16,
+  },
+  resultsButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: colors.accent,
+    borderRadius: 14,
+    paddingVertical: 14,
+    marginBottom: 16,
+  },
+  resultsButtonText: {
+    color: colors.bg,
+    fontSize: 15,
+    fontWeight: "900",
   },
   error: {
     color: colors.danger,
@@ -207,6 +201,9 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 14,
     marginBottom: 10,
+  },
+  rowLocked: {
+    opacity: 0.6,
   },
   rowBody: {
     flex: 1,
@@ -236,11 +233,5 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "900",
     marginTop: 2,
-  },
-  weekPoints: {
-    color: colors.accent,
-    fontSize: 16,
-    fontWeight: "900",
-    marginBottom: 16,
   },
 });

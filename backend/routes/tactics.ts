@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 import Event from "../models/events";
 import Grid from "../models/grids";
 import League from "../models/leagues";
+import Message from "../models/messages";
 import Prediction from "../models/predictions";
 import Tactic from "../models/tactics";
 import User from "../models/users";
@@ -67,6 +68,27 @@ router.post("/bonus", (req, res) => {
 
         Promise.all([prediction.save(), user.save()]).then(() => {
           res.json({ result: true, bonus: prediction.bonus, inventory: user.inventory });
+
+          // Coin Chambrage: announce a doubleur or a bouclier when it's turned on (the assurance stays secret)
+          if (isActive || kind === "assurance") {
+            return;
+          }
+
+          Grid.findById(prediction.grid).then((grid) => {
+            if (!grid) {
+              return;
+            }
+
+            const title = event.homeTeam?.name ? `${event.homeTeam.name}-${event.awayTeam?.name}` : event.competition;
+
+            // The bouclier doesn't say which match: the saboteur has to guess
+            const text =
+              kind === "doubleur"
+                ? `⚡ ${user.username} a utilisé un Doubleur sur ${title} !`
+                : `🛡️ ${user.username} vient de placer un Bouclier.`;
+
+            new Message({ league: grid.league, type: "system", text, meta: { kind } }).save();
+          });
         });
       });
     });

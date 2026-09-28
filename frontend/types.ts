@@ -4,8 +4,8 @@ export type SportEvent = {
   _id: string;
   sport: keyof typeof SPORT_ICONS;
   competition: string;
-  homeTeam?: { name: string };
-  awayTeam?: { name: string };
+  homeTeam?: { name: string; logo?: string };
+  awayTeam?: { name: string; logo?: string };
   participants?: { name: string }[];
   startsAt: string;
   lockAt: string;
@@ -56,6 +56,6 @@ export type ChatMessage = {
   _id: string;
   type: "chat" | "system";
   text: string;
-  user: { _id: string; username: string } | null;
+  user: { _id: string; username: string; avatar?: string | null } | null;
   createdAt: string;
 };

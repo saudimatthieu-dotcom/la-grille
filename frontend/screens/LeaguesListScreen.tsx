@@ -10,6 +10,8 @@ import { Ionicons } from "@expo/vector-icons";
 import type { RootState, RootStackParamList, TabParamList } from "../App";
 import { colors } from "../config/theme";
 import { GRID_TYPES } from "../config/gridTypes";
+import ProgressBar from "../components/ProgressBar";
+import { ordinal } from "../utils/format";
 
 type League = {
   _id: string;
@@ -17,6 +19,9 @@ type League = {
   code: string;
   gridType: string;
   members: { user: string; points: number }[];
+  myRank: number;
+  filled: number;
+  total: number | null;
 };
 
 type Props = CompositeScreenProps<
@@ -42,10 +47,11 @@ export default function LeaguesListScreen({ navigation }: Props) {
           setLeagues(data.leagues);
         }
       });
-  }, [isFocused]);
+  }, [isFocused, token]);
 
   const leagueCards = leagues.map((league) => {
     const gridType = GRID_TYPES.find((type) => type.value === league.gridType);
+    const isComplete = league.total !== null && league.filled >= league.total;
 
     return (
       <TouchableOpacity
@@ -58,11 +64,22 @@ export default function LeaguesListScreen({ navigation }: Props) {
         </View>
 
         <View style={styles.cardBody}>
-          <Text style={styles.cardTitle}>{league.name}</Text>
+          <View style={styles.cardTitleRow}>
+            <Text style={styles.cardTitle}>{league.name}</Text>
+            <View style={[styles.dot, { backgroundColor: isComplete ? colors.accent : colors.danger }]} />
+          </View>
           <Text style={styles.cardType}>Grille {gridType?.label.toLowerCase()}</Text>
           <Text style={styles.cardInfo}>
-            {league.members.length} membres · code {league.code}
+            {ordinal(league.myRank)} / {league.members.length} · code {league.code}
           </Text>
+          <View style={styles.progressRow}>
+            <View style={styles.progressBar}>
+              <ProgressBar value={league.filled} max={league.total ?? 10} />
+            </View>
+            <Text style={styles.progressText}>
+              {league.filled}/{league.total ?? 10}
+            </Text>
+          </View>
         </View>
       </TouchableOpacity>
     );
@@ -145,6 +162,29 @@ const styles = StyleSheet.create({
   },
   cardBody: {
     flex: 1,
+  },
+  cardTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  progressRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 6,
+  },
+  progressBar: {
+    flex: 1,
+  },
+  progressText: {
+    color: colors.muted,
+    fontSize: 12,
   },
   cardTitle: {
     color: colors.text,

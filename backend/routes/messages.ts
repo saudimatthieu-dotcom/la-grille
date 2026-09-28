@@ -50,10 +50,33 @@ router.get("/league/:leagueId/:token", (req, res) => {
     Message.find({ league: context.league._id })
       .sort({ createdAt: -1 })
       .limit(limit)
-      .populate("user", "username")
+      .populate("user", "username avatar")
       .then((messages) => {
         res.json({ result: true, messages: messages.reverse() });
       });
+  });
+});
+
+// GET /messages/latest/:token — the latest game news (system log) from all my leagues (home screen)
+router.get("/latest/:token", (req, res) => {
+  User.findOne({ token: req.params.token }).then((user) => {
+    if (!user) {
+      res.json({ result: false, error: "User not found" });
+      return;
+    }
+
+    League.find({ "members.user": user._id }).then((leagues) => {
+      Message.findOne({ league: { $in: leagues.map((league) => league._id) }, type: "system" })
+        .sort({ createdAt: -1 })
+        .then((message) => {
+          const league = leagues.find((item) => message?.league && item._id.equals(message.league));
+
+          res.json({
+            result: true,
+            latest: message ? { text: message.text, leagueId: league?._id, leagueName: league?.name } : null,
+          });
+        });
+    });
   });
 });
 
@@ -85,7 +108,7 @@ router.post("/league/:leagueId", (req, res) => {
     const newMessage = new Message({ league: context.league._id, user: context.user._id, type: "chat", text });
 
     newMessage.save().then((savedMessage) => {
-      savedMessage.populate("user", "username").then((populatedMessage) => {
+      savedMessage.populate("user", "username avatar").then((populatedMessage) => {
         res.json({ result: true, message: populatedMessage });
       });
     });

@@ -8,8 +8,12 @@ import { useDispatch, useSelector } from "react-redux";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 
 import type { RootState, RootStackParamList, TabParamList } from "../App";
-import { logout, updateInventory } from "../reducers/user";
+import { updateInventory } from "../reducers/user";
 import { colors } from "../config/theme";
+import { GRID_TYPES } from "../config/gridTypes";
+import Avatar from "../components/Avatar";
+import ProgressBar from "../components/ProgressBar";
+import { ordinal } from "../utils/format";
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<TabParamList, "Accueil">,
@@ -19,25 +23,33 @@ type Props = CompositeScreenProps<
 type MyLeague = {
   _id: string;
   name: string;
+  gridType: string;
   members: { user: string }[];
   myPoints: number;
   myRank: number;
+  filled: number;
+  total: number | null;
 };
+
+type Latest = { text: string; leagueId: string; leagueName: string } | null;
 
 export default function HomeScreen({ navigation }: Props) {
   const dispatch = useDispatch();
   const user = useSelector((state: RootState) => state.user.value);
 
   const [leagues, setLeagues] = useState<MyLeague[]>([]);
+  const [latest, setLatest] = useState<Latest>(null);
   const isFocused = useIsFocused();
 
-  // Reloads my leagues and my inventory every time I come back to this tab
+  // Reloads my leagues, my inventory and the latest news every time I come back to this tab
   useEffect(() => {
     if (!isFocused) {
       return;
     }
 
-    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/leagues/user/${user.token}`)
+    const url = process.env.EXPO_PUBLIC_BACKEND_ADRESS;
+
+    fetch(`${url}/leagues/user/${user.token}`)
       .then((response) => response.json())
       .then((data) => {
         if (data.result) {
@@ -46,7 +58,7 @@ export default function HomeScreen({ navigation }: Props) {
       })
       .catch(() => {});
 
-    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/users/me/${user.token}`)
+    fetch(`${url}/users/me/${user.token}`)
       .then((response) => response.json())
       .then((data) => {
         if (data.result) {
@@ -54,52 +66,92 @@ export default function HomeScreen({ navigation }: Props) {
         }
       })
       .catch(() => {});
+
+    fetch(`${url}/messages/latest/${user.token}`)
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.result) {
+          setLatest(data.latest);
+        }
+      })
+      .catch(() => {});
   }, [isFocused, user.token, dispatch]);
 
-  const handleLogout = () => {
-    dispatch(logout());
-    navigation.navigate("Welcome");
-  };
+  // A grid is "to complete" while I haven't predicted every match (or haven't opened it yet)
+  const toComplete = leagues.filter((league) => league.total === null || league.filled < league.total).length;
 
-  const inventory = user.inventory;
+  const leagueCards = leagues.map((league) => {
+    const gridType = GRID_TYPES.find((type) => type.value === league.gridType);
+    const isComplete = league.total !== null && league.filled >= league.total;
 
-  const inventoryItems = [
-    { label: "Doubleur", value: inventory?.doubleur ?? 0, icon: <Ionicons name="flash-outline" size={22} color={colors.accent} /> },
-    { label: "Assurance", value: inventory?.assurance ?? 0, icon: <Ionicons name="umbrella-outline" size={22} color={colors.accent} /> },
-    { label: "Bouclier", value: inventory?.bouclier ?? 0, icon: <Ionicons name="shield-outline" size={22} color={colors.accent} /> },
-  ].map((item) => (
-    <View key={item.label} style={styles.tile}>
-      {item.icon}
-      <Text style={styles.tileValue}>{item.value}</Text>
-      <Text style={styles.tileLabel}>{item.label}</Text>
-    </View>
-  ));
+    return (
+      <TouchableOpacity
+        key={league._id}
+        style={styles.card}
+        onPress={() => navigation.navigate("League", { leagueId: league._id, leagueName: league.name })}
+      >
+        <View style={styles.cardIcon}>
+          <Ionicons name={gridType?.icon ?? "trophy-outline"} size={24} color={colors.accent} />
+        </View>
 
-  const leagueCards = leagues.map((league) => (
-    <TouchableOpacity
-      key={league._id}
-      style={styles.card}
-      onPress={() => navigation.navigate("League", { leagueId: league._id, leagueName: league.name })}
-    >
-      <View style={styles.cardBody}>
-        <Text style={styles.cardTitle}>{league.name}</Text>
-        <Text style={styles.cardInfo}>
-          {league.myRank === 1 && league.myPoints > 0 ? "👑 " : ""}
-          {league.myRank}e sur {league.members.length} · {league.myPoints} pts
-        </Text>
-      </View>
-      <Ionicons name="chevron-forward" size={22} color={colors.muted} />
-    </TouchableOpacity>
-  ));
+        <View style={styles.cardBody}>
+          <View style={styles.cardTitleRow}>
+            <Text style={styles.cardTitle}>{league.name}</Text>
+            <View style={[styles.dot, { backgroundColor: isComplete ? colors.accent : colors.danger }]} />
+          </View>
+          <Text style={styles.cardType}>Grille {gridType?.label.toLowerCase()}</Text>
+          <Text style={styles.cardInfo}>
+            {league.myRank === 1 && league.myPoints > 0 ? "👑 " : ""}
+            {ordinal(league.myRank)} / {league.members.length} · {league.myPoints} pts
+          </Text>
+          <View style={styles.progressRow}>
+            <View style={styles.progressBar}>
+              <ProgressBar value={league.filled} max={league.total ?? 10} />
+            </View>
+            <Text style={styles.progressText}>
+              {league.filled}/{league.total ?? 10}
+            </Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  });
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Salut {user.username} 👋</Text>
+      <View style={styles.header}>
+        <View style={styles.headerText}>
+          <Text style={styles.logo}>LA GRILLE</Text>
+          <Text style={styles.title}>Bonjour {user.username} 👋</Text>
+          <Text style={styles.subtitle}>Prêt à faire chauffer la grille ?</Text>
+        </View>
+        <TouchableOpacity onPress={() => navigation.navigate("Profil")}>
+          <Avatar avatar={user.avatar} username={user.username} size={52} />
+        </TouchableOpacity>
+      </View>
 
-      <Text style={styles.section}>Mes bonus</Text>
-      <View style={styles.tiles}>{inventoryItems}</View>
+      {toComplete > 0 && (
+        <View style={styles.action}>
+          <View style={styles.actionTitleRow}>
+            <Ionicons name="flash" size={20} color={colors.accent} />
+            <Text style={styles.actionLabel}>ACTION REQUISE</Text>
+          </View>
+          <Text style={styles.actionText}>
+            {toComplete} grille{toComplete > 1 ? "s" : ""} à compléter
+          </Text>
+          <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate("Grille")}>
+            <Text style={styles.actionButtonText}>VOIR MES GRILLES →</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
-      <Text style={styles.section}>Mes ligues</Text>
+      <View style={styles.sectionRow}>
+        <Text style={styles.section}>Mes ligues</Text>
+        <TouchableOpacity onPress={() => navigation.navigate("Ligues")}>
+          <Text style={styles.seeAll}>Voir tout →</Text>
+        </TouchableOpacity>
+      </View>
+
       {leagues.length === 0 ? (
         <TouchableOpacity style={styles.card} onPress={() => navigation.navigate("CreateLeague")}>
           <MaterialCommunityIcons name="trophy-outline" size={24} color={colors.accent} />
@@ -109,9 +161,17 @@ export default function HomeScreen({ navigation }: Props) {
         leagueCards
       )}
 
-      <TouchableOpacity style={styles.logout} onPress={handleLogout}>
-        <Text style={styles.logoutText}>Se déconnecter</Text>
-      </TouchableOpacity>
+      {latest && (
+        <TouchableOpacity
+          style={styles.news}
+          onPress={() => navigation.navigate("Chat", { leagueId: latest.leagueId, leagueName: latest.leagueName })}
+        >
+          <Text style={styles.newsText} numberOfLines={2}>
+            {latest.text}
+          </Text>
+          <Ionicons name="chevron-forward" size={20} color={colors.muted} />
+        </TouchableOpacity>
+      )}
     </ScrollView>
   );
 }
@@ -125,42 +185,82 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 64,
   },
-  title: {
-    color: colors.text,
-    fontSize: 28,
-    fontWeight: "900",
-    marginBottom: 24,
-  },
-  section: {
-    color: colors.muted,
-    fontSize: 13,
-    fontWeight: "800",
-    textTransform: "uppercase",
-    marginBottom: 10,
-  },
-  tiles: {
+  header: {
     flexDirection: "row",
-    gap: 10,
-    marginBottom: 28,
-  },
-  tile: {
-    flex: 1,
     alignItems: "center",
-    gap: 4,
-    backgroundColor: colors.card,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingVertical: 14,
+    marginBottom: 20,
   },
-  tileValue: {
-    color: colors.text,
+  headerText: {
+    flex: 1,
+  },
+  logo: {
+    color: colors.accent,
     fontSize: 22,
     fontWeight: "900",
+    letterSpacing: 1,
+    marginBottom: 8,
   },
-  tileLabel: {
+  title: {
+    color: colors.text,
+    fontSize: 24,
+    fontWeight: "900",
+  },
+  subtitle: {
     color: colors.muted,
+    fontSize: 14,
+    marginTop: 2,
+  },
+  action: {
+    borderColor: colors.accent,
+    borderWidth: 1.5,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+    gap: 8,
+  },
+  actionTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  actionLabel: {
+    color: colors.accent,
     fontSize: 12,
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
+  actionText: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: "800",
+  },
+  actionButton: {
+    alignSelf: "flex-start",
+    backgroundColor: colors.accent,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  actionButtonText: {
+    color: colors.bg,
+    fontSize: 13,
+    fontWeight: "900",
+  },
+  sectionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+  section: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: "900",
+    textTransform: "uppercase",
+  },
+  seeAll: {
+    color: colors.muted,
+    fontSize: 13,
   },
   card: {
     flexDirection: "row",
@@ -170,34 +270,75 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderWidth: 1,
     borderRadius: 14,
-    padding: 16,
+    padding: 14,
     marginBottom: 10,
+  },
+  cardIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    borderColor: colors.accent,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
   },
   cardBody: {
     flex: 1,
+  },
+  cardTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   cardTitle: {
     color: colors.text,
     fontSize: 16,
     fontWeight: "800",
   },
-  cardInfo: {
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  cardType: {
     color: colors.muted,
+    fontSize: 12,
+    marginTop: 1,
+  },
+  cardInfo: {
+    color: colors.text,
     fontSize: 13,
+    fontWeight: "700",
     marginTop: 2,
   },
-  logout: {
-    alignSelf: "center",
-    borderColor: colors.danger,
+  progressRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 6,
+  },
+  progressBar: {
+    flex: 1,
+  },
+  progressText: {
+    color: colors.muted,
+    fontSize: 12,
+  },
+  news: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: colors.card,
+    borderColor: colors.border,
     borderWidth: 1,
     borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    marginTop: 28,
+    padding: 14,
+    marginTop: 6,
   },
-  logoutText: {
-    color: colors.danger,
-    fontSize: 15,
+  newsText: {
+    flex: 1,
+    color: colors.gold,
+    fontSize: 14,
     fontWeight: "700",
   },
 });

@@ -1,11 +1,10 @@
 import express from "express";
 import mongoose from "mongoose";
 
-import Event from "../models/events";
-import Grid from "../models/grids";
 import League from "../models/leagues";
+import Prediction from "../models/predictions";
 import User from "../models/users";
-import { getWeek } from "../modules/getWeek";
+import { getCurrentGrid } from "../modules/currentGrid";
 
 const router = express.Router();
 
@@ -35,41 +34,58 @@ router.get("/league/:leagueId/current/:token", (req, res) => {
         return;
       }
 
-      const season = new Date().getFullYear();
-      const week = getWeek(new Date());
+      getCurrentGrid(league._id).then((grid) => {
+        if (!grid) {
+          res.json({ result: false, error: "No upcoming events" });
+          return;
+        }
 
-      Grid.findOne({ league: league._id, season, week })
-        .populate("events")
-        .then((grid) => {
-          if (grid) {
-            res.json({ result: true, grid });
-            return;
-          }
+        res.json({ result: true, grid });
+      });
+    });
+  });
+});
 
-          Event.find({ startsAt: { $gt: new Date() } })
-            .sort({ startsAt: 1 })
-            .limit(10)
-            .then((events) => {
-              if (events.length === 0) {
-                res.json({ result: false, error: "No upcoming events" });
-                return;
-              }
+// GET /grids/mine/:token — this week's grid of each of my leagues, with my progress (Grille tab)
+router.get("/mine/:token", (req, res) => {
+  User.findOne({ token: req.params.token }).then((user) => {
+    if (!user) {
+      res.json({ result: false, error: "User not found" });
+      return;
+    }
 
-              const newGrid = new Grid({
-                league: league._id,
-                season,
-                week,
-                events: events.map((event) => event._id),
-                lockAt: events[0].lockAt,
-              });
+    League.find({ "members.user": user._id }).then((leagues) => {
+      Promise.all(leagues.map((league) => getCurrentGrid(league._id))).then((grids) => {
+        const gridIds = grids.filter((grid) => grid !== null).map((grid) => grid._id);
 
-              newGrid.save().then((savedGrid) => {
-                savedGrid.populate("events").then((populatedGrid) => {
-                  res.json({ result: true, grid: populatedGrid });
-                });
-              });
-            });
+        Prediction.find({ user: user._id, grid: { $in: gridIds } }).then((predictions) => {
+          const now = new Date();
+
+          const myGrids = leagues.map((league, index) => {
+            const grid = grids[index];
+
+            if (!grid) {
+              return { leagueId: league._id, leagueName: league.name, grid: null };
+            }
+
+            const filled = predictions.filter((prediction) => prediction.grid?.equals(grid._id)).length;
+            // Matches still open for predictions
+            const open = grid.events.filter((event) => event.lockAt && event.lockAt > now).length;
+            const nextLockAt = grid.events
+              .map((event) => event.lockAt)
+              .filter((lockAt) => lockAt && lockAt > now)
+              .sort((a, b) => Number(a) - Number(b))[0];
+
+            return {
+              leagueId: league._id,
+              leagueName: league.name,
+              grid: { _id: grid._id, total: grid.events.length, filled, open, nextLockAt: nextLockAt ?? null },
+            };
+          });
+
+          res.json({ result: true, grids: myGrids });
         });
+      });
     });
   });
 });
