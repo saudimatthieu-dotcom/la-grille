@@ -16,6 +16,7 @@ import LeagueScreen from "./screens/LeagueScreen";
 import FootballPredictionScreen from "./screens/FootballPredictionScreen";
 import OverUnderPredictionScreen from "./screens/OverUnderPredictionScreen";
 import PodiumPredictionScreen from "./screens/PodiumPredictionScreen";
+import RankingScreen from "./screens/RankingScreen";
 import type { PredictionPayload, SportEvent } from "./types";
 
 import { Provider, useSelector } from "react-redux";
@@ -48,6 +49,7 @@ export type RootStackParamList = {
   FootballPrediction: { gridId: string; event: SportEvent; payload?: PredictionPayload };
   OverUnderPrediction: { gridId: string; event: SportEvent; payload?: PredictionPayload };
   PodiumPrediction: { gridId: string; event: SportEvent; payload?: PredictionPayload };
+  Ranking: { leagueId: string; leagueName: string };
 };
 
 export type TabParamList = {
@@ -107,6 +109,7 @@ function RootNavigator() {
       <Stack.Screen name="FootballPrediction" component={FootballPredictionScreen} />
       <Stack.Screen name="OverUnderPrediction" component={OverUnderPredictionScreen} />
       <Stack.Screen name="PodiumPrediction" component={PodiumPredictionScreen} />
+      <Stack.Screen name="Ranking" component={RankingScreen} />
     </Stack.Navigator>
   );
 }

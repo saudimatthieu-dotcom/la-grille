@@ -139,6 +139,12 @@ export default function LeagueScreen({ navigation, route }: Props) {
           <Ionicons name="chevron-back" size={28} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.title}>{leagueName.toUpperCase()}</Text>
+        <TouchableOpacity
+          style={styles.rankingButton}
+          onPress={() => navigation.navigate("Ranking", { leagueId, leagueName })}
+        >
+          <Ionicons name="podium-outline" size={24} color={colors.accent} />
+        </TouchableOpacity>
       </View>
 
       <Text style={styles.subtitle}>
@@ -175,6 +181,9 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 24,
     fontWeight: "900",
+  },
+  rankingButton: {
+    marginLeft: "auto",
   },
   subtitle: {
     color: colors.muted,
