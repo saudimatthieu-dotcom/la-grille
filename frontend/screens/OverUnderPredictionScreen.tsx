@@ -78,7 +78,7 @@ export default function OverUnderPredictionScreen({ navigation, route }: Props) 
         <Text style={styles.title}>{event.competition.toUpperCase()}</Text>
       </View>
 
-      <Countdown lockAt={event.lockAt} />
+      <Countdown lockAt={event.lockAt} startsAt={event.startsAt} />
 
       <View style={styles.teams}>
         <View style={styles.team}>

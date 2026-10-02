@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import type { CompositeScreenProps } from "@react-navigation/native";
 import { useIsFocused } from "@react-navigation/native";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
@@ -125,6 +125,7 @@ export default function HomeScreen({ navigation }: Props) {
           <Text style={styles.title}>Bonjour {user.username} 👋</Text>
           <Text style={styles.subtitle}>Prêt à faire chauffer la grille ?</Text>
         </View>
+        <Image source={require("../assets/mascot-home.png")} style={styles.mascot} resizeMode="contain" />
         <TouchableOpacity onPress={() => navigation.navigate("Profil")}>
           <Avatar avatar={user.avatar} username={user.username} size={52} />
         </TouchableOpacity>
@@ -192,6 +193,11 @@ const styles = StyleSheet.create({
   },
   headerText: {
     flex: 1,
+  },
+  mascot: {
+    width: 90,
+    height: 117,
+    marginRight: 12,
   },
   logo: {
     color: colors.accent,

@@ -59,7 +59,8 @@ export type RootStackParamList = {
   Ranking: { leagueId: string; leagueName: string };
   Sabotage: { leagueId: string; targetUserId: string; targetUsername: string };
   Chat: { leagueId: string; leagueName: string };
-  Result: { gridId: string; leagueId: string; leagueName: string };
+  // Without a league: the general grid's results (no league rank)
+  Result: { gridId: string; leagueId?: string; leagueName?: string };
 };
 
 export type TabParamList = {

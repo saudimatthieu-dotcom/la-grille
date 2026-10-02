@@ -15,6 +15,23 @@ export function formatDate(date: string) {
   });
 }
 
+// "ven. 2 oct."
+export function formatDay(date: string) {
+  return new Date(date).toLocaleDateString("fr-FR", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+}
+
+// "20:45"
+export function formatTime(date: string) {
+  return new Date(date).toLocaleTimeString("fr-FR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 // "2–1" for team sports, the podium for F1, the winner for tennis
 export function formatResult(event: SportEvent) {
   const result = event.result;

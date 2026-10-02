@@ -10,6 +10,7 @@ import Tactic from "../models/tactics";
 import User from "../models/users";
 import { checkBody } from "../modules/checkBody";
 import { getWeek } from "../modules/getWeek";
+import { findSabotages } from "../modules/leaguePoints";
 import { buildRanking } from "../modules/ranking";
 
 const router = express.Router();
@@ -74,20 +75,31 @@ router.post("/bonus", (req, res) => {
             return;
           }
 
-          Grid.findById(prediction.grid).then((grid) => {
-            if (!grid) {
+          // Announced once per prediction: turning it off and on again doesn't spam the chats
+          Message.findOne({ type: "system", "meta.kind": kind, "meta.prediction": prediction._id }).then((announced) => {
+            if (announced) {
               return;
             }
 
-            const title = event.homeTeam?.name ? `${event.homeTeam.name}-${event.awayTeam?.name}` : event.competition;
+            // The grid is the same in all the player's leagues, so all of them hear about it
+            League.find({ "members.user": user._id }).then((leagues) => {
+              const title = event.homeTeam?.name ? `${event.homeTeam.name}-${event.awayTeam?.name}` : event.competition;
 
-            // The bouclier doesn't say which match: the saboteur has to guess
-            const text =
-              kind === "doubleur"
-                ? `⚡ ${user.username} a utilisé un Doubleur sur ${title} !`
-                : `🛡️ ${user.username} vient de placer un Bouclier.`;
+              // The bouclier doesn't say which match: the saboteur has to guess
+              const text =
+                kind === "doubleur"
+                  ? `⚡ ${user.username} a utilisé un Doubleur sur ${title} !`
+                  : `🛡️ ${user.username} vient de placer un Bouclier.`;
 
-            new Message({ league: grid.league, type: "system", text, meta: { kind } }).save();
+              const messages = leagues.map((league) => ({
+                league: league._id,
+                type: "system",
+                text,
+                meta: { kind, prediction: prediction._id },
+              }));
+
+              Message.insertMany(messages);
+            });
           });
         });
       });
@@ -95,8 +107,8 @@ router.post("/bonus", (req, res) => {
   });
 });
 
-// Checks that a user may sabotage in this league this week — gives back an error, or the league + this week's grid
-function checkSaboteur(leagueId: string, userId: mongoose.Types.ObjectId) {
+// Checks that a user may sabotage this rival in this league this week — gives back an error, or the league + this week's grid
+function checkSaboteur(leagueId: string, userId: mongoose.Types.ObjectId, targetUserId: string) {
   const season = new Date().getFullYear();
   const week = getWeek(new Date());
 
@@ -109,6 +121,13 @@ function checkSaboteur(leagueId: string, userId: mongoose.Types.ObjectId) {
 
     if (!isMember) {
       return { error: "Not a member of this league" };
+    }
+
+    // Everyone plays the same grid: without this check, a stranger's prediction could be targeted
+    const isTargetMember = league.members.some((member) => member.user?.equals(targetUserId));
+
+    if (!isTargetMember) {
+      return { error: "This player isn't in this league" };
     }
 
     // The lanterne rouge is the last of the season ranking
@@ -130,7 +149,7 @@ function checkSaboteur(leagueId: string, userId: mongoose.Types.ObjectId) {
       }
 
       // populate<...> tells TypeScript that "events" now holds full events, not just ids
-      return Grid.findOne({ league: league._id, season, week })
+      return Grid.findOne({ season, week })
         .populate<{ events: InstanceType<typeof Event>[] }>("events")
         .then((grid) => {
           if (!grid) {
@@ -156,22 +175,32 @@ router.get("/sabotage/:leagueId/:targetUserId/:token", (req, res) => {
       return;
     }
 
-    checkSaboteur(req.params.leagueId, user._id).then((context) => {
+    checkSaboteur(req.params.leagueId, user._id, req.params.targetUserId).then((context) => {
       if ("error" in context) {
         res.json({ result: false, error: context.error });
         return;
       }
 
-      Prediction.find({ user: req.params.targetUserId, grid: context.grid._id, sabotagedBy: null }).then((predictions) => {
-        const now = new Date();
+      Prediction.find({ user: req.params.targetUserId, grid: context.grid._id }).then((predictions) => {
+        findSabotages(
+          context.league._id,
+          predictions.map((prediction) => prediction._id)
+        ).then((sabotages) => {
+          const now = new Date();
 
-        // Only matches the rival predicted and that haven't started yet — never their prediction itself
-        const events = context.grid.events.filter((event) => {
-          const isPredicted = predictions.some((prediction) => prediction.event?.equals(event._id));
-          return isPredicted && event.lockAt && event.lockAt > now;
+          // Predictions already sabotaged in this league can't be hit twice (another league can still hit them)
+          const targets = predictions.filter(
+            (prediction) => !sabotages.some((tactic) => tactic.prediction?.equals(prediction._id))
+          );
+
+          // Only matches the rival predicted and that haven't started yet — never their prediction itself
+          const events = context.grid.events.filter((event) => {
+            const isPredicted = targets.some((prediction) => prediction.event?.equals(event._id));
+            return isPredicted && event.lockAt && event.lockAt > now;
+          });
+
+          res.json({ result: true, events });
         });
-
-        res.json({ result: true, events });
       });
     });
   });
@@ -202,7 +231,7 @@ router.post("/sabotage", (req, res) => {
       return;
     }
 
-    checkSaboteur(leagueId, user._id).then((context) => {
+    checkSaboteur(leagueId, user._id, targetUserId).then((context) => {
       if ("error" in context) {
         res.json({ result: false, error: context.error });
         return;
@@ -226,26 +255,27 @@ router.post("/sabotage", (req, res) => {
           return;
         }
 
-        if (prediction.sabotagedBy) {
-          res.json({ result: false, error: "Already sabotaged" });
-          return;
-        }
+        findSabotages(context.league._id, [prediction._id]).then((sabotages) => {
+          if (sabotages.length > 0) {
+            res.json({ result: false, error: "Already sabotaged" });
+            return;
+          }
 
-        prediction.sabotagedBy = user._id;
+          // The prediction itself isn't touched: it's shared by every league, the sabotage only counts in this one
+          const tactic = new Tactic({
+            league: context.league._id,
+            season: context.season,
+            week: context.week,
+            actor: user._id,
+            target: targetUserId,
+            kind: "sabotage",
+            prediction: prediction._id,
+          });
 
-        const tactic = new Tactic({
-          league: context.league._id,
-          season: context.season,
-          week: context.week,
-          actor: user._id,
-          target: targetUserId,
-          kind: "sabotage",
-          prediction: prediction._id,
-        });
-
-        // Nothing is announced now: the chat finds out when the match is scored
-        Promise.all([prediction.save(), tactic.save()]).then(() => {
-          res.json({ result: true });
+          // Nothing is announced now: the chat finds out when the match is scored
+          tactic.save().then(() => {
+            res.json({ result: true });
+          });
         });
       });
     });

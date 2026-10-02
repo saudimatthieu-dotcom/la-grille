@@ -8,7 +8,7 @@ import type { RootState, RootStackParamList } from "../App";
 import { colors } from "../config/theme";
 import { SPORT_ICONS } from "../config/sports";
 import type { Bonus, PredictionPayload, SportEvent } from "../types";
-import { eventTitle, formatPayload, formatResult, ordinal } from "../utils/format";
+import { eventTitle, formatDate, formatPayload, formatResult, ordinal } from "../utils/format";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Result">;
 
@@ -24,8 +24,9 @@ type ResultItem = {
 type Results = {
   results: ResultItem[];
   weekPoints: number;
-  rankBefore: number;
-  rankNow: number;
+  // null on the general grid: there's only a rank inside a league
+  rankBefore: number | null;
+  rankNow: number | null;
   passed: string[];
 };
 
@@ -53,7 +54,10 @@ export default function ResultScreen({ navigation, route }: Props) {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/predictions/results/${gridId}/${token}`)
+    // With a league, the points count its sabotages and I get my rank in it
+    const query = leagueId ? `?leagueId=${leagueId}` : "";
+
+    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/predictions/results/${gridId}/${token}${query}`)
       .then((response) => response.json())
       .then((json) => {
         if (json.result) {
@@ -63,7 +67,7 @@ export default function ResultScreen({ navigation, route }: Props) {
         }
       })
       .catch(() => setError("Impossible to connect to server"));
-  }, [gridId, token]);
+  }, [gridId, leagueId, token]);
 
   const rows = (data?.results ?? []).map((item) => {
     const tags = tagsOf(item);
@@ -75,6 +79,7 @@ export default function ResultScreen({ navigation, route }: Props) {
           <Text style={styles.cardTitle}>{eventTitle(item.event)}</Text>
           <Text style={styles.score}>{formatResult(item.event)}</Text>
         </View>
+        <Text style={styles.cardDate}>{formatDate(item.event.startsAt)}</Text>
 
         <Text style={styles.label}>TON PRONO</Text>
         <Text style={styles.prono}>{item.payload ? formatPayload(item.event, item.payload) : "Pas de prono"}</Text>
@@ -89,7 +94,7 @@ export default function ResultScreen({ navigation, route }: Props) {
     );
   });
 
-  const rankDelta = data ? data.rankBefore - data.rankNow : 0;
+  const rankDelta = data && data.rankBefore !== null && data.rankNow !== null ? data.rankBefore - data.rankNow : 0;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -99,7 +104,7 @@ export default function ResultScreen({ navigation, route }: Props) {
         </TouchableOpacity>
         <View>
           <Text style={styles.title}>RÉSULTATS</Text>
-          <Text style={styles.subtitle}>{leagueName}</Text>
+          <Text style={styles.subtitle}>{leagueName ?? "Grille générale"}</Text>
         </View>
       </View>
 
@@ -110,24 +115,28 @@ export default function ResultScreen({ navigation, route }: Props) {
           <Text style={styles.label}>CETTE SEMAINE</Text>
           <Text style={styles.weekPoints}>+{data.weekPoints} pts</Text>
 
-          <Text style={[styles.label, styles.rankLabel]}>CLASSEMENT</Text>
-          <View style={styles.rankRow}>
-            <Text style={styles.rank}>
-              {ordinal(data.rankBefore)} → {ordinal(data.rankNow)}
-            </Text>
-            {rankDelta !== 0 && (
-              <View style={styles.rankDelta}>
-                <Ionicons
-                  name={rankDelta > 0 ? "arrow-up" : "arrow-down"}
-                  size={18}
-                  color={rankDelta > 0 ? colors.accent : colors.danger}
-                />
-                <Text style={[styles.rankDeltaText, rankDelta < 0 && styles.rankDeltaDown]}>
-                  {rankDelta > 0 ? `+${rankDelta}` : rankDelta}
+          {data.rankBefore !== null && data.rankNow !== null && (
+            <>
+              <Text style={[styles.label, styles.rankLabel]}>CLASSEMENT</Text>
+              <View style={styles.rankRow}>
+                <Text style={styles.rank}>
+                  {ordinal(data.rankBefore)} → {ordinal(data.rankNow)}
                 </Text>
+                {rankDelta !== 0 && (
+                  <View style={styles.rankDelta}>
+                    <Ionicons
+                      name={rankDelta > 0 ? "arrow-up" : "arrow-down"}
+                      size={18}
+                      color={rankDelta > 0 ? colors.accent : colors.danger}
+                    />
+                    <Text style={[styles.rankDeltaText, rankDelta < 0 && styles.rankDeltaDown]}>
+                      {rankDelta > 0 ? `+${rankDelta}` : rankDelta}
+                    </Text>
+                  </View>
+                )}
               </View>
-            )}
-          </View>
+            </>
+          )}
 
           {data.passed.length > 0 && (
             <View style={styles.passedRow}>
@@ -142,9 +151,11 @@ export default function ResultScreen({ navigation, route }: Props) {
 
       {rows}
 
-      <TouchableOpacity style={styles.button} onPress={() => navigation.replace("Ranking", { leagueId, leagueName })}>
-        <Text style={styles.buttonText}>VOIR LE CLASSEMENT</Text>
-      </TouchableOpacity>
+      {leagueId && leagueName && (
+        <TouchableOpacity style={styles.button} onPress={() => navigation.replace("Ranking", { leagueId, leagueName })}>
+          <Text style={styles.buttonText}>VOIR LE CLASSEMENT</Text>
+        </TouchableOpacity>
+      )}
     </ScrollView>
   );
 }
@@ -258,6 +269,11 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 15,
     fontWeight: "800",
+  },
+  cardDate: {
+    color: colors.muted,
+    fontSize: 13,
+    marginTop: 4,
   },
   score: {
     color: colors.text,

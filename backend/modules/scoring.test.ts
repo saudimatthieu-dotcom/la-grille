@@ -1,4 +1,4 @@
-import { applyTactics, scoreFootball, scoreOverUnder, scorePodium, scoreTennis, scorePrediction } from "./scoring";
+import { applyTactics, pointsInLeague, scoreFootball, scoreOverUnder, scorePodium, scoreTennis, scorePrediction } from "./scoring";
 
 describe("scoreFootball", () => {
   const result = { homeScore: 2, awayScore: 1 };
@@ -110,35 +110,41 @@ describe("scorePrediction", () => {
 
 describe("applyTactics", () => {
   it("keeps the points without any bonus", () => {
-    expect(applyTactics(1, "football", {}, false)).toBe(1);
+    expect(applyTactics(1, "football", {})).toBe(1);
   });
 
   it("doubles the points with the doubleur", () => {
-    expect(applyTactics(3, "football", { doubleur: true }, false)).toBe(6);
+    expect(applyTactics(3, "football", { doubleur: true })).toBe(6);
   });
 
   it("gives nothing extra with the doubleur on a wrong prediction", () => {
-    expect(applyTactics(0, "football", { doubleur: true }, false)).toBe(0);
+    expect(applyTactics(0, "football", { doubleur: true })).toBe(0);
   });
 
   it("gives the max with the assurance on a partly right prediction", () => {
-    expect(applyTactics(1, "football", { assurance: true }, false)).toBe(3);
-    expect(applyTactics(2, "f1", { assurance: true }, false)).toBe(6);
+    expect(applyTactics(1, "football", { assurance: true })).toBe(3);
+    expect(applyTactics(2, "f1", { assurance: true })).toBe(6);
   });
 
   it("gives nothing with the assurance on a fully wrong prediction", () => {
-    expect(applyTactics(0, "basket", { assurance: true }, false)).toBe(0);
+    expect(applyTactics(0, "basket", { assurance: true })).toBe(0);
   });
 
   it("applies the assurance before the doubleur", () => {
-    expect(applyTactics(1, "football", { assurance: true, doubleur: true }, false)).toBe(6);
+    expect(applyTactics(1, "football", { assurance: true, doubleur: true })).toBe(6);
+  });
+});
+
+describe("pointsInLeague", () => {
+  it("keeps the real points when there is no sabotage in this league", () => {
+    expect(pointsInLeague(6, { doubleur: true }, false)).toBe(6);
   });
 
   it("sets a sabotaged prediction to 0", () => {
-    expect(applyTactics(3, "football", { doubleur: true }, true)).toBe(0);
+    expect(pointsInLeague(6, { doubleur: true }, true)).toBe(0);
   });
 
   it("keeps the points when the bouclier blocks the sabotage", () => {
-    expect(applyTactics(3, "football", { bouclier: true }, true)).toBe(3);
+    expect(pointsInLeague(3, { bouclier: true }, true)).toBe(3);
   });
 });

@@ -9,6 +9,8 @@ const tacticSchema = new mongoose.Schema({
   kind: { type: String, enum: ["doubleur", "assurance", "bouclier", "sabotage"] },
   prediction: { type: mongoose.Schema.Types.ObjectId, ref: "predictions" },
   resolved: { type: Boolean, default: false },
+  // Set when the match is scored: the target's Bouclier blocked this sabotage
+  shieldTriggered: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
 });
 

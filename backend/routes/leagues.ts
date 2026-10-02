@@ -91,39 +91,32 @@ router.get("/user/:token", (req, res) => {
         }
 
         League.find({ "members.user": user._id }).then((leagues) => {
-            const leagueIds = leagues.map((league) => league._id);
+            // This week's grid (read only: it is created when a player opens it)
+            Grid.findOne({ season: new Date().getFullYear(), week: getWeek(new Date()) }).then((grid) => {
+                Promise.all([
+                    grid ? Prediction.countDocuments({ user: user._id, grid: grid._id }) : Promise.resolve(0),
+                    Promise.all(leagues.map((league) => getWeekPoints(league))),
+                ]).then(([filled, weekPointsByLeague]) => {
+                    // Adds my rank, my points and my progress to each league (home screen + Mes Ligues)
+                    const myLeagues = leagues.map((league, index) => {
+                        const me = league.members.find((member) => member.user?.equals(user._id));
+                        const myPoints = me?.points ?? 0;
+                        const myRank = league.members.filter((member) => member.points > myPoints).length + 1;
 
-            // This week's grids (read only: they are created when a league is opened)
-            Grid.find({ league: { $in: leagueIds }, season: new Date().getFullYear(), week: getWeek(new Date()) }).then(
-                (grids) => {
-                    const gridIds = grids.map((grid) => grid._id);
-
-                    Prediction.find({ user: user._id, grid: { $in: gridIds } }).then((predictions) => {
-                        // Adds my rank, my points and my progress to each league (home screen + Mes Ligues)
-                        const myLeagues = leagues.map((league) => {
-                            const me = league.members.find((member) => member.user?.equals(user._id));
-                            const myPoints = me?.points ?? 0;
-                            const myRank = league.members.filter((member) => member.points > myPoints).length + 1;
-
-                            const grid = grids.find((item) => item.league?.equals(league._id));
-                            const myPredictions = grid
-                                ? predictions.filter((prediction) => prediction.grid?.equals(grid._id))
-                                : [];
-
-                            return {
-                                ...league.toObject(),
-                                myPoints,
-                                myRank,
-                                myWeekPoints: myPredictions.reduce((total, prediction) => total + (prediction.points ?? 0), 0),
-                                filled: myPredictions.length,
-                                total: grid ? grid.events.length : null,
-                            };
-                        });
-
-                        res.json({ result: true, leagues: myLeagues });
+                        return {
+                            ...league.toObject(),
+                            myPoints,
+                            myRank,
+                            // The same grid everywhere, but a sabotage only counts in its league
+                            myWeekPoints: weekPointsByLeague[index][String(user._id)] ?? 0,
+                            filled,
+                            total: grid ? grid.events.length : null,
+                        };
                     });
-                }
-            );
+
+                    res.json({ result: true, leagues: myLeagues });
+                });
+            });
         });
     });
 });
@@ -165,7 +158,7 @@ router.get("/:leagueId/ranking/:token", (req, res) => {
                     avatar: member.avatar,
                 }));
 
-                getWeekPoints(league._id).then((weekPoints) => {
+                getWeekPoints(league).then((weekPoints) => {
                     const points = scope === "season" ? getSeasonPoints(league) : weekPoints;
 
                     // weekPoints on every row: the "+3 this week" shown next to the season total

@@ -69,7 +69,7 @@ export default function FootballPredictionScreen({ navigation, route }: Props) {
         <Text style={styles.title}>{event.competition.toUpperCase()}</Text>
       </View>
 
-      <Countdown lockAt={event.lockAt} />
+      <Countdown lockAt={event.lockAt} startsAt={event.startsAt} />
 
       <View style={styles.scoreRow}>
         <View style={styles.team}>

@@ -1,47 +1,46 @@
-import mongoose from "mongoose";
-
 import Event from "../models/events";
 import Grid from "../models/grids";
 import { getWeek } from "./getWeek";
 
 type EventDoc = InstanceType<typeof Event>;
 
-// Finds this week's grid of a league (with its events), or creates it from the next 10 events.
-// Gives back null when there is no upcoming event to build a grid from.
-export function getCurrentGrid(leagueId: mongoose.Types.ObjectId) {
-  const season = new Date().getFullYear();
-  const week = getWeek(new Date());
+// Monday 00:00 of this week → Monday 00:00 of next week
+function getWeekBounds(date: Date) {
+  const start = new Date(date.getFullYear(), date.getMonth(), date.getDate() - ((date.getDay() + 6) % 7));
+  const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7);
+  return { start, end };
+}
 
-  const findGrid = () =>
-    Grid.findOne({ league: leagueId, season, week }).populate<{ events: EventDoc[] }>("events");
+// This week's grid (with its events, in kick-off order): every match of the week, no limit.
+// Gives back null when there is no match this week.
+export function getCurrentGrid() {
+  const now = new Date();
+  const season = now.getFullYear();
+  const week = getWeek(now);
+  const { start, end } = getWeekBounds(now);
 
-  return findGrid().then((grid) => {
-    if (grid) {
-      return grid;
-    }
+  return Event.find({ startsAt: { $gte: start, $lt: end } }).then((events) => {
+    const eventIds = events.map((event) => event._id);
 
-    return Event.find({ startsAt: { $gt: new Date() } })
-      .sort({ startsAt: 1 })
-      .limit(10)
-      .then((events) => {
-        if (events.length === 0) {
+    // upsert: the first visit creates the grid — $addToSet: matches imported later in the week join it,
+    // and none is ever removed (a prediction already made always keeps its match)
+    const addWeekEvents = () =>
+      Grid.findOneAndUpdate(
+        { season, week },
+        { $addToSet: { events: { $each: eventIds } } },
+        { upsert: true, returnDocument: "after" }
+      ).populate<{ events: EventDoc[] }>({ path: "events", options: { sort: { startsAt: 1 } } });
+
+    // If two players open the grid at the same second, the unique index refuses the second upsert:
+    // we then simply try again, the grid exists by now
+    return addWeekEvents()
+      .catch(() => addWeekEvents())
+      .then((grid) => {
+        if (!grid || grid.events.length === 0) {
           return null;
         }
 
-        const newGrid = new Grid({
-          league: leagueId,
-          season,
-          week,
-          events: events.map((event) => event._id),
-          lockAt: events[0].lockAt,
-        });
-
-        // If two members open the league at the same second, the unique index refuses the second grid:
-        // we then simply read the one that was just created
-        return newGrid
-          .save()
-          .then(() => findGrid())
-          .catch(() => findGrid());
+        return grid;
       });
   });
 }

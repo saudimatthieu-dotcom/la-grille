@@ -151,12 +151,8 @@ export type Bonus = {
   bouclier?: boolean;
 };
 
-// Applies the tactics to the raw points of one prediction
-export function applyTactics(points: number, sport: string, bonus: Bonus, isSabotaged: boolean) {
-  if (isSabotaged && !bonus.bouclier) {
-    return 0;
-  }
-
+// Applies the bonuses to the raw points of one prediction — the real points, the same in every ranking
+export function applyTactics(points: number, sport: string, bonus: Bonus) {
   let finalPoints = points;
 
   if (bonus.assurance && finalPoints > 0) {
@@ -168,4 +164,13 @@ export function applyTactics(points: number, sport: string, bonus: Bonus, isSabo
   }
 
   return finalPoints;
+}
+
+// What a prediction is worth in one league: a sabotage there sets it to 0, unless the Bouclier blocks it
+export function pointsInLeague(points: number, bonus: Bonus, isSabotagedHere: boolean) {
+  if (isSabotagedHere && !bonus.bouclier) {
+    return 0;
+  }
+
+  return points;
 }

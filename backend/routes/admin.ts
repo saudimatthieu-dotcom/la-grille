@@ -1,13 +1,12 @@
 import express from "express";
 
 import Event from "../models/events";
-import Grid from "../models/grids";
 import League from "../models/leagues";
 import Message from "../models/messages";
 import Prediction from "../models/predictions";
 import Tactic from "../models/tactics";
 import User from "../models/users";
-import { applyTactics, scorePrediction } from "../modules/scoring";
+import { applyTactics, pointsInLeague, scorePrediction } from "../modules/scoring";
 import type { Result } from "../modules/scoring";
 import { THESPORTSDB_COMPETITIONS } from "../config/competitions";
 import { fetchUpcomingEvents, fetchEventResult } from "../providers/thesportsdb";
@@ -97,65 +96,78 @@ router.post("/score", (req, res) => {
 
     // points: null → not scored yet, so running this route twice never counts points twice
     Prediction.find({ event: { $in: eventIds }, points: null }).then((predictions) => {
-      const gridIds = predictions.map((prediction) => prediction.grid);
+      const predictionIds = predictions.map((prediction) => prediction._id);
+      const playerIds = predictions.map((prediction) => prediction.user);
 
-      Grid.find({ _id: { $in: gridIds } }).then((grids) => {
+      Promise.all([
+        League.find({ "members.user": { $in: playerIds } }),
+        Tactic.find({ kind: "sabotage", prediction: { $in: predictionIds } }),
+      ]).then(([leagues, sabotages]) => {
         const updates = predictions.map((prediction) => {
           const event = events.find((item) => prediction.event && item._id.equals(prediction.event));
-          const grid = grids.find((item) => prediction.grid && item._id.equals(prediction.grid));
 
-          if (!event || !grid) {
+          if (!event) {
             return Promise.resolve();
           }
 
           const rawPoints = scorePrediction(event.sport, prediction.payload, event.result, event.ouLine ?? 0);
-          const isSabotaged = Boolean(prediction.sabotagedBy);
-          const points = applyTactics(rawPoints, event.sport, prediction.bonus ?? {}, isSabotaged);
+          const bonus = prediction.bonus ?? {};
 
-          // Remembered for the chat log: "his Bouclier blocked the attack!"
-          prediction.shieldTriggered = isSabotaged && Boolean(prediction.bonus?.bouclier);
+          // The real points: they go to the general ranking, sabotage or not
+          const points = applyTactics(rawPoints, event.sport, bonus);
 
           prediction.points = points;
           prediction.scoredAt = new Date();
 
-          // Save the prediction, then add its points to the player's total in the league
-          return prediction.save().then(() =>
-            League.updateOne(
-              { _id: grid.league, "members.user": prediction.user },
-              { $inc: { "members.$.points": points } }
-            )
-          );
+          // Each league of the player gets the points as they count there: 0 if it was sabotaged in that league
+          const leagueUpdates = leagues
+            .filter((league) => league.members.some((member) => member.user?.equals(prediction.user)))
+            .map((league) => {
+              const isSabotagedHere = sabotages.some(
+                (tactic) => tactic.league?.equals(league._id) && tactic.prediction?.equals(prediction._id)
+              );
+
+              return League.updateOne(
+                { _id: league._id, "members.user": prediction.user },
+                { $inc: { "members.$.points": pointsInLeague(points, bonus, isSabotagedHere) } }
+              );
+            });
+
+          return prediction
+            .save()
+            .then(() => Promise.all([User.updateOne({ _id: prediction.user }, { $inc: { points } }), ...leagueUpdates]));
         });
 
         Promise.all(updates).then(() => {
-          // Every sabotage scored in this run gets its line in the league chat
-          const sabotaged = predictions.filter((prediction) => prediction.sabotagedBy);
-          const userIds = sabotaged.flatMap((prediction) => [prediction.sabotagedBy, prediction.user]);
+          // Every sabotage scored in this run gets its line in the chat of its league
+          const userIds = sabotages.flatMap((tactic) => [tactic.actor, tactic.target]);
 
           User.find({ _id: { $in: userIds } }).then((users) => {
             const nameOf = (id: unknown) => users.find((user) => user._id.equals(String(id)))?.username ?? "?";
 
-            const messages = sabotaged.map((prediction) => {
-              const grid = grids.find((item) => prediction.grid && item._id.equals(prediction.grid));
-              const actor = nameOf(prediction.sabotagedBy);
-              const target = nameOf(prediction.user);
+            // Remembered for the results screen: "his Bouclier blocked the attack!"
+            const tacticSaves = sabotages.map((tactic) => {
+              const prediction = predictions.find((item) => tactic.prediction?.equals(item._id));
+              tactic.shieldTriggered = Boolean(prediction?.bonus?.bouclier);
+              tactic.resolved = true;
+              return tactic.save();
+            });
+
+            const messages = sabotages.map((tactic) => {
+              const actor = nameOf(tactic.actor);
+              const target = nameOf(tactic.target);
 
               return {
-                league: grid?.league,
+                league: tactic.league,
                 type: "system",
-                text: prediction.shieldTriggered
+                text: tactic.shieldTriggered
                   ? `🛡️ ${actor} a tenté de saboter ${target}, mais son Bouclier s'est activé !`
                   : `💣 ${actor} a saboté ${target} : 0 point sur ce match !`,
-                meta: { kind: prediction.shieldTriggered ? "bouclier" : "sabotage" },
+                meta: { kind: tactic.shieldTriggered ? "bouclier" : "sabotage", tactic: tactic._id },
               };
             });
 
-            const sabotagedIds = sabotaged.map((prediction) => prediction._id);
-
-            Promise.all([
-              Message.insertMany(messages),
-              Tactic.updateMany({ prediction: { $in: sabotagedIds } }, { resolved: true }),
-            ]).then(() => {
+            Promise.all([Message.insertMany(messages), ...tacticSaves]).then(() => {
               res.json({ result: true, scored: predictions.length });
             });
           });

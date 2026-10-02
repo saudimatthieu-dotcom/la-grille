@@ -106,7 +106,7 @@ export default function CreateLeagueScreen({ navigation }: Props) {
       <Text style={styles.label}>Rejoins une ligue avec un code</Text>
       <TextInput
         style={styles.input}
-        placeholder="Ex : P6HAK2"
+        placeholder="Ex : P8JS?T"
         placeholderTextColor={colors.muted}
         value={code}
         onChangeText={setCode}

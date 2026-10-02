@@ -10,8 +10,7 @@ const predictionSchema = new mongoose.Schema({
     assurance: { type: Boolean, default: false },
     bouclier: { type: Boolean, default: false },
   },
-  sabotagedBy: { type: mongoose.Schema.Types.ObjectId, ref: "users", default: null },
-  shieldTriggered: { type: Boolean, default: false },
+  // The real points (doubleur and assurance included) — a sabotage only counts in its league, see tactics
   points: { type: Number, default: null },
   scoredAt: Date,
 });

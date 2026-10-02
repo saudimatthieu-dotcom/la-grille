@@ -1,4 +1,4 @@
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import type { RootStackParamList } from "../App";
@@ -9,6 +9,7 @@ type Props = NativeStackScreenProps<RootStackParamList, "Welcome">;
 export default function WelcomeScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
+      <Image source={require("../assets/logo.png")} style={styles.logo} resizeMode="contain" />
       <Text style={styles.title}>LA GRILLE</Text>
       <Text style={styles.subtitle}>Pronostique avec tes potes. Chambre-les quand tu gagnes.</Text>
 
@@ -30,6 +31,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: 24,
+  },
+  logo: {
+    width: 180,
+    height: 212,
+    marginBottom: 16,
   },
   title: {
     color: colors.accent,

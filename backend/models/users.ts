@@ -6,6 +6,8 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   token: String,
   avatar: String,
+  // Season total on the general grid (the general ranking) — sabotages don't count here
+  points: { type: Number, default: 0 },
   inventory: {
     doubleur: { type: Number, default: 0 },
     // Starting stock: 1 assurance + 1 bouclier at signup (then bought in the shop, later)
