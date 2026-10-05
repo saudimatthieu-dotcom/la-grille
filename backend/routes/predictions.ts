@@ -9,6 +9,7 @@ import { checkBody } from "../modules/checkBody";
 import { getWeek } from "../modules/getWeek";
 import { buildRanking } from "../modules/ranking";
 import { findTactics, getSeasonPoints, getWeekPoints, tacticsOf } from "../modules/leaguePoints";
+import { isInGrid } from "../modules/gridTypes";
 import { findPlayerLeague } from "../modules/publicLeague";
 import { pointsInLeague } from "../modules/scoring";
 
@@ -47,6 +48,11 @@ router.post("/", (req, res) => {
 
       if (!league) {
         res.json({ result: false, error: "Not a member of this league" });
+        return;
+      }
+
+      if (!isInGrid(league.gridType, event)) {
+        res.json({ result: false, error: "This match isn't in this league's grid" });
         return;
       }
 
@@ -142,9 +148,9 @@ router.get("/results/:gridId/:token", (req, res) => {
           getWeekPoints(league, season, week),
           User.find({ _id: { $in: league.members.map((member) => member.user) } }),
         ]).then(([tactics, weekPoints, users]) => {
-          // Each finished match of the grid, with what I predicted in this league and what it gave me there
+          // Each finished match of this league's grid, with what I predicted there and what it gave me
           const results = grid.events
-            .filter((event) => event.status === "finished")
+            .filter((event) => event.status === "finished" && isInGrid(league.gridType, event))
             .map((event) => {
               const prediction = predictions.find((item) => item.event?.equals(event._id));
               const { bonus, sabotage } = tacticsOf(tactics, prediction?._id);

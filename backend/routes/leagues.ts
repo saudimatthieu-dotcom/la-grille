@@ -2,12 +2,14 @@ import express from "express";
 import mongoose from "mongoose";
 import uid2 from "uid2";
 
+import Event from "../models/events";
 import Grid from "../models/grids";
 import League from "../models/leagues";
 import Prediction from "../models/predictions";
 import User from "../models/users";
 import { checkBody } from "../modules/checkBody";
 import { getWeek } from "../modules/getWeek";
+import { isInGrid } from "../modules/gridTypes";
 import { buildRanking } from "../modules/ranking";
 import { getSeasonPoints, getWeekPoints } from "../modules/leaguePoints";
 
@@ -104,8 +106,11 @@ router.get("/user/:token", (req, res) => {
         }
 
         League.find({ "members.user": user._id }).then((leagues) => {
-            // This week's grid (read only: it is created when a player opens it)
-            Grid.findOne({ season: new Date().getFullYear(), week: getWeek(new Date()) }).then((grid) => {
+            // This week's grid (read only: it is created when a player opens it), with each event's sport and
+            // competition: a league only counts the matches of its grid type
+            Grid.findOne({ season: new Date().getFullYear(), week: getWeek(new Date()) })
+                .populate<{ events: InstanceType<typeof Event>[] }>("events", "sport competition")
+                .then((grid) => {
                 Promise.all([
                     // How many matches I predicted in each league: every league has its own predictions
                     Promise.all(
@@ -129,7 +134,7 @@ router.get("/user/:token", (req, res) => {
                             myRank,
                             myWeekPoints: weekPointsByLeague[index][String(user._id)] ?? 0,
                             filled: filledByLeague[index],
-                            total: grid ? grid.events.length : null,
+                            total: grid ? grid.events.filter((event) => isInGrid(league.gridType, event)).length : null,
                         };
                     });
 

@@ -39,7 +39,10 @@ export default function WeekGrid({ leagueId, leagueName }: Props) {
       return;
     }
 
-    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/grids/current/${token}`)
+    // This league's grid: only the matches of its type (none: the public league, the officielle grid)
+    const query = leagueId ? `?leagueId=${leagueId}` : "";
+
+    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/grids/current/${token}${query}`)
       .then((response) => response.json())
       .then((data) => {
         if (!data.result) {
@@ -52,8 +55,6 @@ export default function WeekGrid({ leagueId, leagueName }: Props) {
         setNow(Date.now());
 
         // My predictions in this league (none: the public league — the Grille tab)
-        const query = leagueId ? `?leagueId=${leagueId}` : "";
-
         return fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/predictions/grid/${data.grid._id}/${token}${query}`)
           .then((response) => response.json())
           .then((predictionData) => {
