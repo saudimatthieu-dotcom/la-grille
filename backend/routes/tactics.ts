@@ -81,8 +81,9 @@ router.post("/bonus", (req, res) => {
               return;
             }
 
-            // The grid is the same in all the player's leagues, so all of them hear about it
-            League.find({ "members.user": user._id }).then((leagues) => {
+            // The grid is the same in all the player's leagues, so all of them hear about it — except the public
+            // league, which has no chat ($ne: true also matches the old leagues that have no isPublic field)
+            League.find({ "members.user": user._id, isPublic: { $ne: true } }).then((leagues) => {
               const title = event.homeTeam?.name ? `${event.homeTeam.name}-${event.awayTeam?.name}` : event.competition;
 
               // The bouclier doesn't say which match: the saboteur has to guess
@@ -115,6 +116,11 @@ function checkSaboteur(leagueId: string, userId: mongoose.Types.ObjectId, target
   return League.findById(leagueId).then((league) => {
     if (!league) {
       return { error: "League not found" };
+    }
+
+    // Before the lanterne rouge check: the last of the public league must not read "only the lanterne rouge…"
+    if (league.isPublic) {
+      return { error: "No sabotage in the public league" };
     }
 
     const isMember = league.members.some((member) => member.user?.equals(userId));

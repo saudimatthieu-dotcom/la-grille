@@ -26,6 +26,11 @@ function checkMember(token: string, leagueId: string) {
         return { error: "Not a member of this league" };
       }
 
+      // Used by both chat routes: one check closes the chat of the public league for reading and sending
+      if (league.isPublic) {
+        return { error: "No chat in the public league" };
+      }
+
       return { user, league };
     });
   });
