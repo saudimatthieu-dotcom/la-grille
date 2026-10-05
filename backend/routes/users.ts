@@ -6,6 +6,7 @@ import uid2 from "uid2";
 import User from "../models/users";
 import { AVATARS } from "../config/avatars";
 import { checkBody } from "../modules/checkBody";
+import { joinPublicLeague } from "../modules/publicLeague";
 import { sendResetCode } from "../modules/sendResetCode";
 
 const RESET_CODE_MINUTES = 15;
@@ -35,15 +36,18 @@ router.post("/signup", (req, res) => {
     });
 
     newUser.save().then((newDoc) => {
-      res.json({
-        result: true,
-        token: newDoc.token,
-        user: {
-          username: newDoc.username,
-          email: newDoc.email,
-          avatar: newDoc.avatar,
-          inventory: newDoc.inventory,
-        },
+      // Joined before answering: the home screen shows the public league right after signup
+      joinPublicLeague(newDoc._id).then(() => {
+        res.json({
+          result: true,
+          token: newDoc.token,
+          user: {
+            username: newDoc.username,
+            email: newDoc.email,
+            avatar: newDoc.avatar,
+            inventory: newDoc.inventory,
+          },
+        });
       });
     });
   });
@@ -57,15 +61,18 @@ router.post("/signin", (req, res) => {
 
   User.findOne({ email: req.body.email }).then((data) => {
     if (data && bcrypt.compareSync(req.body.password, data.password)) {
-      res.json({
-        result: true,
-        token: data.token,
-        user: {
-          username: data.username,
-          email: data.email,
-          avatar: data.avatar,
-          inventory: data.inventory,
-        },
+      // Accounts created before the public league existed join it here
+      joinPublicLeague(data._id).then(() => {
+        res.json({
+          result: true,
+          token: data.token,
+          user: {
+            username: data.username,
+            email: data.email,
+            avatar: data.avatar,
+            inventory: data.inventory,
+          },
+        });
       });
     } else {
       res.json({ result: false, error: "Wrong email or password" });
