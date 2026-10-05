@@ -107,9 +107,16 @@ router.get("/user/:token", (req, res) => {
             // This week's grid (read only: it is created when a player opens it)
             Grid.findOne({ season: new Date().getFullYear(), week: getWeek(new Date()) }).then((grid) => {
                 Promise.all([
-                    grid ? Prediction.countDocuments({ user: user._id, grid: grid._id }) : Promise.resolve(0),
+                    // How many matches I predicted in each league: every league has its own predictions
+                    Promise.all(
+                        leagues.map((league) =>
+                            grid
+                                ? Prediction.countDocuments({ user: user._id, grid: grid._id, league: league._id })
+                                : Promise.resolve(0)
+                        )
+                    ),
                     Promise.all(leagues.map((league) => getWeekPoints(league))),
-                ]).then(([filled, weekPointsByLeague]) => {
+                ]).then(([filledByLeague, weekPointsByLeague]) => {
                     // Adds my rank, my points and my progress to each league (home screen + Mes Ligues)
                     const myLeagues = leagues.map((league, index) => {
                         const me = league.members.find((member) => member.user?.equals(user._id));
@@ -120,9 +127,8 @@ router.get("/user/:token", (req, res) => {
                             ...league.toObject(),
                             myPoints,
                             myRank,
-                            // The same grid everywhere, but a sabotage only counts in its league
                             myWeekPoints: weekPointsByLeague[index][String(user._id)] ?? 0,
-                            filled,
+                            filled: filledByLeague[index],
                             total: grid ? grid.events.length : null,
                         };
                     });

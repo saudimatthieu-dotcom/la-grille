@@ -28,11 +28,11 @@ type BonusContext =
       prediction: InstanceType<typeof Prediction>;
       event: InstanceType<typeof Event>;
       grid: InstanceType<typeof Grid>;
-      leagues: LeagueDoc[];
+      league: LeagueDoc;
       tactics: TacticDoc[];
     };
 
-// Finds what a bonus needs: me, my prediction, its match and its week, my leagues, and my bonuses of that week
+// Finds what a bonus needs: me, my prediction, its match, its week, its league, and my bonuses there that week
 function loadBonusContext(token: string, predictionId: string) {
   return User.findOne({ token }).then<BonusContext>((user) => {
     if (!user) {
@@ -45,25 +45,30 @@ function loadBonusContext(token: string, predictionId: string) {
         return { error: "Prediction not found" };
       }
 
+      // A prediction belongs to one league: a bonus on it counts there
       return Promise.all([
         Event.findById(prediction.event),
         Grid.findById(prediction.grid),
-        League.find({ "members.user": user._id }),
-      ]).then<BonusContext>(([event, grid, leagues]) => {
-        if (!event || !grid) {
+        League.findById(prediction.league),
+      ]).then<BonusContext>(([event, grid, league]) => {
+        if (!event || !grid || !league) {
           return { error: "Prediction not found" };
         }
 
-        // My bonuses of the prediction's week, in all my leagues: the stock is counted from them
-        return Tactic.find({ actor: user._id, season: grid.season, week: grid.week, kind: { $in: BONUS_KINDS } }).then(
-          (tactics) => ({ user, prediction, event, grid, leagues, tactics })
-        );
+        // My bonuses of the prediction's week in its league: the stock is counted from them
+        return Tactic.find({
+          actor: user._id,
+          league: league._id,
+          season: grid.season,
+          week: grid.week,
+          kind: { $in: BONUS_KINDS },
+        }).then((tactics) => ({ user, prediction, event, grid, league, tactics }));
       });
     });
   });
 }
 
-// One league as the BonusBar shows it: my bonus on this prediction there, and what's left of my week's bonuses there
+// What the BonusBar shows: my bonus on this prediction, and what's left of my week's bonuses in its league
 function bonusStateOf(league: LeagueDoc, tactics: TacticDoc[], predictionId: mongoose.Types.ObjectId) {
   const tacticsHere = tactics.filter((tactic) => tactic.league?.equals(league._id));
   const active = tacticsHere.find((tactic) => tactic.prediction?.equals(predictionId));
@@ -82,7 +87,7 @@ function bonusStateOf(league: LeagueDoc, tactics: TacticDoc[], predictionId: mon
   };
 }
 
-// GET /tactics/bonus/:predictionId/:token — my bonus on this prediction in each of my private leagues (BonusBar)
+// GET /tactics/bonus/:predictionId/:token — my bonus on this prediction and my stock in its league (BonusBar)
 router.get("/bonus/:predictionId/:token", (req, res) => {
   if (!mongoose.isValidObjectId(req.params.predictionId)) {
     res.json({ result: false, error: "Invalid id" });
@@ -95,19 +100,16 @@ router.get("/bonus/:predictionId/:token", (req, res) => {
       return;
     }
 
-    // The public league plays without bonuses
-    const privateLeagues = context.leagues.filter((league) => !league.isPublic);
+    // The public league plays without bonuses: null tells the BonusBar to say so
+    const { league, tactics, prediction } = context;
 
-    res.json({
-      result: true,
-      leagues: privateLeagues.map((league) => bonusStateOf(league, context.tactics, context.prediction._id)),
-    });
+    res.json({ result: true, league: league.isPublic ? null : bonusStateOf(league, tactics, prediction._id) });
   });
 });
 
-// POST /tactics/bonus — puts a doubleur, assurance or bouclier on one prediction in one league, or takes it off
+// POST /tactics/bonus — puts a doubleur, assurance or bouclier on one prediction (in its league), or takes it off
 router.post("/bonus", (req, res) => {
-  if (!checkBody(req.body, ["token", "predictionId", "leagueId", "kind"])) {
+  if (!checkBody(req.body, ["token", "predictionId", "kind"])) {
     res.json({ result: false, error: "Missing or empty fields" });
     return;
   }
@@ -117,7 +119,7 @@ router.post("/bonus", (req, res) => {
     return;
   }
 
-  if (!mongoose.isValidObjectId(req.body.predictionId) || !mongoose.isValidObjectId(req.body.leagueId)) {
+  if (!mongoose.isValidObjectId(req.body.predictionId)) {
     res.json({ result: false, error: "Invalid id" });
     return;
   }
@@ -130,13 +132,7 @@ router.post("/bonus", (req, res) => {
       return;
     }
 
-    const { user, prediction, event, grid, tactics } = context;
-    const league = context.leagues.find((item) => item._id.equals(req.body.leagueId));
-
-    if (!league) {
-      res.json({ result: false, error: "Not a member of this league" });
-      return;
-    }
+    const { user, prediction, event, grid, league, tactics } = context;
 
     if (league.isPublic) {
       res.json({ result: false, error: "No bonus in the public league" });
@@ -153,10 +149,8 @@ router.post("/bonus", (req, res) => {
       return;
     }
 
-    // My bonus already on this prediction in this league, if any
-    const current = tactics.find(
-      (tactic) => tactic.league?.equals(league._id) && tactic.prediction?.equals(prediction._id)
-    );
+    // My bonus already on this prediction, if any
+    const current = tactics.find((tactic) => tactic.prediction?.equals(prediction._id));
 
     // The same bonus again: taken off — it goes back to this week's stock
     if (current && current.kind === kind) {
@@ -167,7 +161,7 @@ router.post("/bonus", (req, res) => {
       return;
     }
 
-    // Bonuses don't stack: one per prediction in each league
+    // Bonuses don't stack: one per prediction
     if (current) {
       res.json({ result: false, error: "Only one bonus per prediction" });
       return;
@@ -178,7 +172,6 @@ router.post("/bonus", (req, res) => {
       return;
     }
 
-    // The prediction itself isn't touched: it's shared by every league, the bonus only counts in this one
     const newTactic = new Tactic({
       league: league._id,
       season: grid.season,
@@ -304,14 +297,17 @@ router.get("/sabotage/:leagueId/:targetUserId/:token", (req, res) => {
         return;
       }
 
-      Prediction.find({ user: req.params.targetUserId, grid: context.grid._id }).then((predictions) => {
+      // The rival's predictions in this league (their other leagues have their own)
+      const filter = { user: req.params.targetUserId, grid: context.grid._id, league: context.league._id };
+
+      Prediction.find(filter).then((predictions) => {
         findSabotages(
           context.league._id,
           predictions.map((prediction) => prediction._id)
         ).then((sabotages) => {
           const now = new Date();
 
-          // Predictions already sabotaged in this league can't be hit twice (another league can still hit them)
+          // A prediction already sabotaged can't be hit twice
           const targets = predictions.filter(
             (prediction) => !sabotages.some((tactic) => tactic.prediction?.equals(prediction._id))
           );
@@ -372,7 +368,12 @@ router.post("/sabotage", (req, res) => {
         return;
       }
 
-      Prediction.findOne({ user: targetUserId, grid: context.grid._id, event: event._id }).then((prediction) => {
+      Prediction.findOne({
+        user: targetUserId,
+        grid: context.grid._id,
+        event: event._id,
+        league: context.league._id,
+      }).then((prediction) => {
         if (!prediction) {
           res.json({ result: false, error: "This player has no prediction on this event" });
           return;
@@ -384,7 +385,7 @@ router.post("/sabotage", (req, res) => {
             return;
           }
 
-          // The prediction itself isn't touched: it's shared by every league, the sabotage only counts in this one
+          // The prediction itself isn't touched: the sabotage is a tactic, scored with it
           const tactic = new Tactic({
             league: context.league._id,
             season: context.season,

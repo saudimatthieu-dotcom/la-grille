@@ -55,6 +55,8 @@ export default function OverUnderPredictionScreen({ navigation, route }: Props) 
         token,
         gridId,
         eventId: event._id,
+        // The league this prediction is for (none: the public league)
+        leagueId,
         payload: { winner, overUnder },
       }),
     })
@@ -124,7 +126,7 @@ export default function OverUnderPredictionScreen({ navigation, route }: Props) 
         />
       </View>
 
-      <BonusBar sport={event.sport} predictionId={prediction?._id} leagueId={leagueId} />
+      <BonusBar sport={event.sport} predictionId={prediction?._id} />
 
       {error !== "" && <Text style={styles.error}>{error}</Text>}
 

@@ -63,7 +63,7 @@ export default function PodiumPredictionScreen({ navigation, route }: Props) {
     fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/predictions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, gridId, eventId: event._id, payload }),
+      body: JSON.stringify({ token, gridId, eventId: event._id, leagueId, payload }),
     })
       .then((response) => response.json())
       .then((data) => {
@@ -118,7 +118,7 @@ export default function PodiumPredictionScreen({ navigation, route }: Props) {
 
       {participantRows}
 
-      <BonusBar sport={event.sport} predictionId={prediction?._id} leagueId={leagueId} />
+      <BonusBar sport={event.sport} predictionId={prediction?._id} />
 
       {error !== "" && <Text style={styles.error}>{error}</Text>}
 

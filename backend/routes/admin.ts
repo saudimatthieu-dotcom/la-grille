@@ -7,6 +7,7 @@ import Prediction from "../models/predictions";
 import Tactic from "../models/tactics";
 import User from "../models/users";
 import { tacticsOf } from "../modules/leaguePoints";
+import { getPublicLeague } from "../modules/publicLeague";
 import { pointsInLeague, scorePrediction } from "../modules/scoring";
 import type { Result } from "../modules/scoring";
 import { THESPORTSDB_COMPETITIONS } from "../config/competitions";
@@ -98,13 +99,12 @@ router.post("/score", (req, res) => {
     // points: null → not scored yet, so running this route twice never counts points twice
     Prediction.find({ event: { $in: eventIds }, points: null }).then((predictions) => {
       const predictionIds = predictions.map((prediction) => prediction._id);
-      const playerIds = predictions.map((prediction) => prediction.user);
 
       Promise.all([
-        League.find({ "members.user": { $in: playerIds } }),
-        // Bonuses and sabotages on these predictions, in every league
+        getPublicLeague(),
+        // Bonuses and sabotages on these predictions (each prediction belongs to one league)
         Tactic.find({ prediction: { $in: predictionIds } }),
-      ]).then(([leagues, tactics]) => {
+      ]).then(([publicLeague, tactics]) => {
         const sabotages = tactics.filter((tactic) => tactic.kind === "sabotage");
 
         const updates = predictions.map((prediction) => {
@@ -114,28 +114,26 @@ router.post("/score", (req, res) => {
             return Promise.resolve();
           }
 
-          // The raw points, without any bonus: the general ranking and the public league
+          // The raw points, without any bonus
           const points = scorePrediction(event.sport, prediction.payload, event.result, event.ouLine ?? 0);
 
           prediction.points = points;
           prediction.scoredAt = new Date();
 
-          // Each league of the player adds its own bonus and sabotage: a doubleur in one league doubles only there
-          const leagueUpdates = leagues
-            .filter((league) => league.members.some((member) => member.user?.equals(prediction.user)))
-            .map((league) => {
-              const tacticsHere = tactics.filter((tactic) => tactic.league?.equals(league._id));
-              const { bonus, sabotage } = tacticsOf(tacticsHere, prediction._id);
+          // The prediction's league gets the points with its bonus and its sabotage
+          const { bonus, sabotage } = tacticsOf(tactics, prediction._id);
+          const leagueUpdate = League.updateOne(
+            { _id: prediction.league, "members.user": prediction.user },
+            { $inc: { "members.$.points": pointsInLeague(points, event.sport, bonus, Boolean(sabotage)) } }
+          );
 
-              return League.updateOne(
-                { _id: league._id, "members.user": prediction.user },
-                { $inc: { "members.$.points": pointsInLeague(points, event.sport, bonus, Boolean(sabotage)) } }
-              );
-            });
+          // The general ranking = the public league's predictions (no bonus there: the raw points)
+          const isPublicPrediction = Boolean(publicLeague && prediction.league?.equals(publicLeague._id));
+          const userUpdate = isPublicPrediction
+            ? User.updateOne({ _id: prediction.user }, { $inc: { points } })
+            : Promise.resolve();
 
-          return prediction
-            .save()
-            .then(() => Promise.all([User.updateOne({ _id: prediction.user }, { $inc: { points } }), ...leagueUpdates]));
+          return prediction.save().then(() => Promise.all([leagueUpdate, userUpdate]));
         });
 
         Promise.all(updates).then(() => {
@@ -147,10 +145,8 @@ router.post("/score", (req, res) => {
 
             // Remembered for the results screen: "his Bouclier blocked the attack!"
             const tacticSaves = sabotages.map((tactic) => {
-              // The target's bouclier on this prediction, in the league of the sabotage
-              const tacticsHere = tactics.filter((other) => String(other.league) === String(tactic.league));
-              const target = predictions.find((item) => tactic.prediction?.equals(item._id));
-              tactic.shieldTriggered = Boolean(tacticsOf(tacticsHere, target?._id).bonus.bouclier);
+              // The target's bouclier on the sabotaged prediction
+              tactic.shieldTriggered = Boolean(tacticsOf(tactics, tactic.prediction ?? undefined).bonus.bouclier);
               tactic.resolved = true;
               return tactic.save();
             });

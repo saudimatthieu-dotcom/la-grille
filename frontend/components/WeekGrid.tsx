@@ -51,7 +51,10 @@ export default function WeekGrid({ leagueId, leagueName }: Props) {
         setGridId(data.grid._id);
         setNow(Date.now());
 
-        return fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/predictions/grid/${data.grid._id}/${token}`)
+        // My predictions in this league (none: the public league — the Grille tab)
+        const query = leagueId ? `?leagueId=${leagueId}` : "";
+
+        return fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/predictions/grid/${data.grid._id}/${token}${query}`)
           .then((response) => response.json())
           .then((predictionData) => {
             if (predictionData.result) {
@@ -60,7 +63,7 @@ export default function WeekGrid({ leagueId, leagueName }: Props) {
           });
       })
       .catch(() => setError("Impossible to connect to server"));
-  }, [isFocused, token]);
+  }, [isFocused, token, leagueId]);
 
   const weekPoints = predictions.reduce((total, prediction) => total + (prediction.points ?? 0), 0);
   const hasResults = events.some((event) => event.status === "finished");

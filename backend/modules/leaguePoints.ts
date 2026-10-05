@@ -55,13 +55,8 @@ export function getWeekPoints(league: LeagueDoc, season = new Date().getFullYear
       return {} as Record<string, number>;
     }
 
-    // "id is ObjectId" tells TypeScript the empty ids are gone, so the list fits the query
-    const memberIds = league.members
-      .map((member) => member.user)
-      .filter((id): id is mongoose.Types.ObjectId => Boolean(id));
-
-    // The event's sport is needed: the Assurance gives the max of that sport
-    return Prediction.find({ grid: grid._id, user: { $in: memberIds } })
+    // Only the predictions made in this league — the event's sport is needed: the Assurance gives the max of that sport
+    return Prediction.find({ grid: grid._id, league: league._id })
       .populate<{ event: EventDoc }>("event", "sport")
       .then((predictions) =>
         findTactics(

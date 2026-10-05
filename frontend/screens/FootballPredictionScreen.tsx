@@ -46,6 +46,8 @@ export default function FootballPredictionScreen({ navigation, route }: Props) {
         token,
         gridId,
         eventId: event._id,
+        // The league this prediction is for (none: the public league)
+        leagueId,
         payload: { homeScore: Number(homeScore), awayScore: Number(awayScore) },
       }),
     })
@@ -103,7 +105,7 @@ export default function FootballPredictionScreen({ navigation, route }: Props) {
         </View>
       </View>
 
-      <BonusBar sport={event.sport} predictionId={prediction?._id} leagueId={leagueId} />
+      <BonusBar sport={event.sport} predictionId={prediction?._id} />
 
       {error !== "" && <Text style={styles.error}>{error}</Text>}
 
