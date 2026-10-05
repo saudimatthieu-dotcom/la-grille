@@ -16,6 +16,8 @@ const leagueSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
+// Only one public league: the database refuses a second league with isPublic: true
+leagueSchema.index({ isPublic: 1 }, { unique: true, partialFilterExpression: { isPublic: true } });
 const League = mongoose.model("leagues", leagueSchema);
 
 export default League;
