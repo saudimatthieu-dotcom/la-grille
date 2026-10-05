@@ -47,6 +47,9 @@ export type Prediction = {
   points: number | null;
 };
 
+// The 3 tabs of a league screen
+export type LeagueTab = "grid" | "ranking" | "chat";
+
 // One line of the league chat — user is null for system logs (sabotage, bouclier)
 export type ChatMessage = {
   _id: string;

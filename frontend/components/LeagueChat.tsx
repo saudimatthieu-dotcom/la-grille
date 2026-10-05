@@ -1,28 +1,19 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useSelector } from "react-redux";
 import { Ionicons } from "@expo/vector-icons";
 
-import type { RootState, RootStackParamList } from "../App";
+import type { RootState } from "../App";
 import { colors } from "../config/theme";
 import type { ChatMessage } from "../types";
-import Avatar from "../components/Avatar";
-import LeagueHeader from "../components/LeagueHeader";
+import Avatar from "./Avatar";
 
-type Props = NativeStackScreenProps<RootStackParamList, "Chat">;
+type Props = {
+  leagueId: string;
+};
 
-export default function ChatScreen({ route }: Props) {
-  const { leagueId, leagueName } = route.params;
+// The Chat tab of a league: messages + system logs, the input stays at the bottom
+export default function LeagueChat({ leagueId }: Props) {
   const token = useSelector((state: RootState) => state.user.value.token);
   const username = useSelector((state: RootState) => state.user.value.username);
 
@@ -32,7 +23,7 @@ export default function ChatScreen({ route }: Props) {
 
   const scrollRef = useRef<ScrollView>(null);
 
-  // Loads the chat now, then every 10 seconds while the screen is open
+  // Loads the chat now, then every 10 seconds while the tab is open (leaving the tab stops it)
   useEffect(() => {
     const loadMessages = () => {
       fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/messages/league/${leagueId}/${token}`)
@@ -103,11 +94,8 @@ export default function ChatScreen({ route }: Props) {
   });
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : "height"}>
-      <View style={styles.header}>
-        <LeagueHeader leagueId={leagueId} leagueName={leagueName} active="Chat" />
-        <Text style={styles.title}>LE COIN CHAMBRAGE</Text>
-      </View>
+    <View style={styles.container}>
+      <Text style={styles.title}>LE COIN CHAMBRAGE</Text>
 
       <ScrollView
         ref={scrollRef}
@@ -135,26 +123,22 @@ export default function ChatScreen({ route }: Props) {
           <Ionicons name="send" size={20} color={colors.bg} />
         </TouchableOpacity>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.bg,
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 64,
-    paddingBottom: 12,
-    borderBottomColor: colors.border,
-    borderBottomWidth: 1,
   },
   title: {
     color: colors.text,
     fontSize: 16,
     fontWeight: "900",
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+    borderBottomColor: colors.border,
+    borderBottomWidth: 1,
   },
   messageRow: {
     flexDirection: "row",

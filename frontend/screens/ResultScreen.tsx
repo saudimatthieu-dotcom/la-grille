@@ -159,7 +159,7 @@ export default function ResultScreen({ navigation, route }: Props) {
       {rows}
 
       {leagueId && leagueName && (
-        <TouchableOpacity style={styles.button} onPress={() => navigation.replace("Ranking", { leagueId, leagueName })}>
+        <TouchableOpacity style={styles.button} onPress={() => navigation.popTo("League", { leagueId, leagueName, tab: "ranking" })}>
           <Text style={styles.buttonText}>VOIR LE CLASSEMENT</Text>
         </TouchableOpacity>
       )}

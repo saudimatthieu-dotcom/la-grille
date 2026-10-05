@@ -154,7 +154,7 @@ export default function HomeScreen({ navigation }: Props) {
       {latest && (
         <TouchableOpacity
           style={styles.news}
-          onPress={() => navigation.navigate("Chat", { leagueId: latest.leagueId, leagueName: latest.leagueName })}
+          onPress={() => navigation.navigate("League", { leagueId: latest.leagueId, leagueName: latest.leagueName, tab: "chat" })}
         >
           <Text style={styles.newsText} numberOfLines={2}>
             {latest.text}

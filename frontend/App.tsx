@@ -17,13 +17,11 @@ import LeagueScreen from "./screens/LeagueScreen";
 import FootballPredictionScreen from "./screens/FootballPredictionScreen";
 import OverUnderPredictionScreen from "./screens/OverUnderPredictionScreen";
 import PodiumPredictionScreen from "./screens/PodiumPredictionScreen";
-import RankingScreen from "./screens/RankingScreen";
 import SabotageScreen from "./screens/SabotageScreen";
-import ChatScreen from "./screens/ChatScreen";
 import ResultScreen from "./screens/ResultScreen";
 import GridsScreen from "./screens/GridsScreen";
 import ProfileScreen from "./screens/ProfileScreen";
-import type { Prediction, SportEvent } from "./types";
+import type { LeagueTab, Prediction, SportEvent } from "./types";
 
 import { Provider, useSelector } from "react-redux";
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
@@ -52,13 +50,12 @@ export type RootStackParamList = {
   ForgotPassword: undefined;
   MainTabs: undefined;
   CreateLeague: undefined;
-  League: { leagueId: string; leagueName: string };
+  // tab: the tab to open (Grille by default) — e.g. the chat from the home screen news
+  League: { leagueId: string; leagueName: string; tab?: LeagueTab };
   FootballPrediction: { gridId: string; event: SportEvent; prediction?: Prediction; leagueId?: string };
   OverUnderPrediction: { gridId: string; event: SportEvent; prediction?: Prediction; leagueId?: string };
   PodiumPrediction: { gridId: string; event: SportEvent; prediction?: Prediction; leagueId?: string };
-  Ranking: { leagueId: string; leagueName: string };
   Sabotage: { leagueId: string; targetUserId: string; targetUsername: string };
-  Chat: { leagueId: string; leagueName: string };
   // Without a league: the general grid's results (no league rank)
   Result: { gridId: string; leagueId?: string; leagueName?: string };
 };
@@ -127,9 +124,7 @@ function RootNavigator() {
       <Stack.Screen name="FootballPrediction" component={FootballPredictionScreen} />
       <Stack.Screen name="OverUnderPrediction" component={OverUnderPredictionScreen} />
       <Stack.Screen name="PodiumPrediction" component={PodiumPredictionScreen} />
-      <Stack.Screen name="Ranking" component={RankingScreen} />
       <Stack.Screen name="Sabotage" component={SabotageScreen} />
-      <Stack.Screen name="Chat" component={ChatScreen} />
       <Stack.Screen name="Result" component={ResultScreen} />
     </Stack.Navigator>
   );

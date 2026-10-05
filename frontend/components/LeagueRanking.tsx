@@ -1,16 +1,19 @@
 import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useSelector } from "react-redux";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 
 import type { RootState, RootStackParamList } from "../App";
 import { colors } from "../config/theme";
-import Avatar from "../components/Avatar";
-import LeagueHeader from "../components/LeagueHeader";
+import Avatar from "./Avatar";
 import { formatWeek } from "../utils/format";
 
-type Props = NativeStackScreenProps<RootStackParamList, "Ranking">;
+type Props = {
+  leagueId: string;
+  leagueName: string;
+};
 
 type Scope = "week" | "season";
 
@@ -35,8 +38,9 @@ type RankingRow = {
   isLastPlace: boolean;
 };
 
-export default function RankingScreen({ navigation, route }: Props) {
-  const { leagueId, leagueName } = route.params;
+// The Classement tab of a league: Semaine / Saison, the past weeks, and the sabotage for the lanterne rouge
+export default function LeagueRanking({ leagueId, leagueName }: Props) {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const token = useSelector((state: RootState) => state.user.value.token);
   const username = useSelector((state: RootState) => state.user.value.username);
 
@@ -109,9 +113,7 @@ export default function RankingScreen({ navigation, route }: Props) {
   });
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <LeagueHeader leagueId={leagueId} leagueName={leagueName} active="Ranking" />
-
+    <View>
       <View style={styles.toggle}>
         <TouchableOpacity
           style={[styles.toggleButton, scope === "week" && styles.toggleSelected]}
@@ -169,19 +171,11 @@ export default function RankingScreen({ navigation, route }: Props) {
           <Text style={styles.buttonText}>VOIR MA GRILLE</Text>
         </TouchableOpacity>
       )}
-    </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.bg,
-  },
-  content: {
-    padding: 20,
-    paddingTop: 64,
-  },
   toggle: {
     flexDirection: "row",
     backgroundColor: colors.card,

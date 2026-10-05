@@ -7,24 +7,24 @@ import { Ionicons } from "@expo/vector-icons";
 
 import type { RootState, RootStackParamList } from "../App";
 import { colors } from "../config/theme";
+import type { LeagueTab } from "../types";
 import { ordinal } from "../utils/format";
-
-type Tab = "League" | "Ranking" | "Chat";
 
 type Props = {
   leagueId: string;
   leagueName: string;
-  active: Tab;
+  active: LeagueTab;
+  onTabChange: (tab: LeagueTab) => void;
 };
 
-const TABS: { name: Tab; label: string }[] = [
-  { name: "League", label: "Grille" },
-  { name: "Ranking", label: "Classement" },
-  { name: "Chat", label: "Chat" },
+const TABS: { name: LeagueTab; label: string }[] = [
+  { name: "grid", label: "Grille" },
+  { name: "ranking", label: "Classement" },
+  { name: "chat", label: "Chat" },
 ];
 
 // The top of a league: name, my rank, points this week, and the Grille / Classement / Chat tabs
-export default function LeagueHeader({ leagueId, leagueName, active }: Props) {
+export default function LeagueHeader({ leagueId, leagueName, active, onTabChange }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const token = useSelector((state: RootState) => state.user.value.token);
   const username = useSelector((state: RootState) => state.user.value.username);
@@ -40,7 +40,7 @@ export default function LeagueHeader({ leagueId, leagueName, active }: Props) {
           return;
         }
         setIsPublic(data.isPublic);
-        const me =data.ranking.find((row: { username: string }) => row.username === username);
+        const me = data.ranking.find((row: { username: string }) => row.username === username);
         if (me) {
           setStats({ rank: me.rank, total: data.ranking.length, weekPoints: me.weekPoints });
         }
@@ -49,15 +49,15 @@ export default function LeagueHeader({ leagueId, leagueName, active }: Props) {
   }, [leagueId, token, username]);
 
   // The public league has no chat: only Grille and Classement
-  const tabs = TABS.filter((tab) => !(isPublic && tab.name === "Chat")).map((tab) => {
+  const tabs = TABS.filter((tab) => !(isPublic && tab.name === "chat")).map((tab) => {
     const isActive = tab.name === active;
 
     return (
       <TouchableOpacity
         key={tab.name}
         style={[styles.tab, isActive && styles.tabActive]}
-        // replace (not navigate): switching tabs doesn't pile screens up behind the back arrow
-        onPress={() => !isActive && navigation.replace(tab.name, { leagueId, leagueName })}
+        // Like Semaine / Saison: the same screen shows another tab — the back arrow still leaves the league
+        onPress={() => onTabChange(tab.name)}
       >
         <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{tab.label}</Text>
       </TouchableOpacity>
