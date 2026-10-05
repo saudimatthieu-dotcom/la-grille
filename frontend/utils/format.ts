@@ -57,7 +57,10 @@ export function formatPayload(event: SportEvent, payload: PredictionPayload) {
     return `${payload.winner} bat ${payload.finalist}`;
   }
   if (payload.overUnder) {
-    const team = payload.winner === "home" ? event.homeTeam?.name : event.awayTeam?.name;
+    let team = payload.winner === "home" ? event.homeTeam?.name : event.awayTeam?.name;
+    if (payload.winner === "draw") {
+      team = "Match nul";
+    }
     const line = payload.overUnder === "over" ? `plus de ${event.ouLine}` : `moins de ${event.ouLine}`;
     return `${team} · ${line}`;
   }

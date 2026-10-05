@@ -48,6 +48,11 @@ describe("scoreOverUnder", () => {
     // 20 + 20 = 40 → under 42.5
     expect(scoreOverUnder({ winner: "home", overUnder: "under" }, { homeScore: 20, awayScore: 20 }, 42.5)).toBe(1);
   });
+
+  it("gives the winner point for predicting a rugby draw when it is a draw", () => {
+    // 20 + 20 = 40 → under 42.5
+    expect(scoreOverUnder({ winner: "draw", overUnder: "under" }, { homeScore: 20, awayScore: 20 }, 42.5)).toBe(2);
+  });
 });
 
 describe("scorePodium", () => {

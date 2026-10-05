@@ -12,7 +12,7 @@ import TeamLogo from "../components/TeamLogo";
 
 type Props = NativeStackScreenProps<RootStackParamList, "OverUnderPrediction">;
 
-type Winner = "home" | "away";
+type Winner = "home" | "draw" | "away";
 type OverUnder = "over" | "under";
 
 type ChoiceProps = {
@@ -21,7 +21,7 @@ type ChoiceProps = {
   onPress: () => void;
 };
 
-// One of the two big buttons: highlighted when selected
+// One of the big choice buttons: highlighted when selected
 function ChoiceButton({ label, selected, onPress }: ChoiceProps) {
   return (
     <TouchableOpacity style={[styles.choice, selected && styles.choiceSelected]} onPress={onPress}>
@@ -99,6 +99,10 @@ export default function OverUnderPredictionScreen({ navigation, route }: Props) 
           selected={winner === "home"}
           onPress={() => setWinner("home")}
         />
+        {/* A draw only in rugby — basket always goes to overtime */}
+        {event.sport === "rugby" && (
+          <ChoiceButton label="Nul" selected={winner === "draw"} onPress={() => setWinner("draw")} />
+        )}
         <ChoiceButton
           label={event.awayTeam?.name ?? "Extérieur"}
           selected={winner === "away"}
