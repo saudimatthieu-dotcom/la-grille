@@ -6,7 +6,8 @@ import Message from "../models/messages";
 import Prediction from "../models/predictions";
 import Tactic from "../models/tactics";
 import User from "../models/users";
-import { applyTactics, pointsInLeague, scorePrediction } from "../modules/scoring";
+import { tacticsOf } from "../modules/leaguePoints";
+import { pointsInLeague, scorePrediction } from "../modules/scoring";
 import type { Result } from "../modules/scoring";
 import { THESPORTSDB_COMPETITIONS } from "../config/competitions";
 import { fetchUpcomingEvents, fetchEventResult } from "../providers/thesportsdb";
@@ -101,8 +102,11 @@ router.post("/score", (req, res) => {
 
       Promise.all([
         League.find({ "members.user": { $in: playerIds } }),
-        Tactic.find({ kind: "sabotage", prediction: { $in: predictionIds } }),
-      ]).then(([leagues, sabotages]) => {
+        // Bonuses and sabotages on these predictions, in every league
+        Tactic.find({ prediction: { $in: predictionIds } }),
+      ]).then(([leagues, tactics]) => {
+        const sabotages = tactics.filter((tactic) => tactic.kind === "sabotage");
+
         const updates = predictions.map((prediction) => {
           const event = events.find((item) => prediction.event && item._id.equals(prediction.event));
 
@@ -110,26 +114,22 @@ router.post("/score", (req, res) => {
             return Promise.resolve();
           }
 
-          const rawPoints = scorePrediction(event.sport, prediction.payload, event.result, event.ouLine ?? 0);
-          const bonus = prediction.bonus ?? {};
-
-          // The real points: they go to the general ranking, sabotage or not
-          const points = applyTactics(rawPoints, event.sport, bonus);
+          // The raw points, without any bonus: the general ranking and the public league
+          const points = scorePrediction(event.sport, prediction.payload, event.result, event.ouLine ?? 0);
 
           prediction.points = points;
           prediction.scoredAt = new Date();
 
-          // Each league of the player gets the points as they count there: 0 if it was sabotaged in that league
+          // Each league of the player adds its own bonus and sabotage: a doubleur in one league doubles only there
           const leagueUpdates = leagues
             .filter((league) => league.members.some((member) => member.user?.equals(prediction.user)))
             .map((league) => {
-              const isSabotagedHere = sabotages.some(
-                (tactic) => tactic.league?.equals(league._id) && tactic.prediction?.equals(prediction._id)
-              );
+              const tacticsHere = tactics.filter((tactic) => tactic.league?.equals(league._id));
+              const { bonus, sabotage } = tacticsOf(tacticsHere, prediction._id);
 
               return League.updateOne(
                 { _id: league._id, "members.user": prediction.user },
-                { $inc: { "members.$.points": pointsInLeague(points, bonus, isSabotagedHere) } }
+                { $inc: { "members.$.points": pointsInLeague(points, event.sport, bonus, Boolean(sabotage)) } }
               );
             });
 
@@ -147,8 +147,10 @@ router.post("/score", (req, res) => {
 
             // Remembered for the results screen: "his Bouclier blocked the attack!"
             const tacticSaves = sabotages.map((tactic) => {
-              const prediction = predictions.find((item) => tactic.prediction?.equals(item._id));
-              tactic.shieldTriggered = Boolean(prediction?.bonus?.bouclier);
+              // The target's bouclier on this prediction, in the league of the sabotage
+              const tacticsHere = tactics.filter((other) => String(other.league) === String(tactic.league));
+              const target = predictions.find((item) => tactic.prediction?.equals(item._id));
+              tactic.shieldTriggered = Boolean(tacticsOf(tacticsHere, target?._id).bonus.bouclier);
               tactic.resolved = true;
               return tactic.save();
             });
@@ -174,19 +176,6 @@ router.post("/score", (req, res) => {
         });
       });
     });
-  });
-});
-
-// POST /admin/weekly-reset — Monday: the free doubleur of the week
-router.post("/weekly-reset", (req, res) => {
-  if (!isAdmin(req.body.secret)) {
-    res.json({ result: false, error: "Forbidden" });
-    return;
-  }
-
-  // $max: brings everyone up to at least 1 — an unused free doubleur doesn't pile up, bought ones are kept
-  User.updateMany({}, { $max: { "inventory.doubleur": 1 } }).then((update) => {
-    res.json({ result: true, updated: update.modifiedCount });
   });
 });
 

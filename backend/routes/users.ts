@@ -45,7 +45,6 @@ router.post("/signup", (req, res) => {
             username: newDoc.username,
             email: newDoc.email,
             avatar: newDoc.avatar,
-            inventory: newDoc.inventory,
           },
         });
       });
@@ -70,7 +69,6 @@ router.post("/signin", (req, res) => {
             username: data.username,
             email: data.email,
             avatar: data.avatar,
-            inventory: data.inventory,
           },
         });
       });
@@ -153,14 +151,13 @@ router.post("/reset-password", (req, res) => {
           username: savedUser.username,
           email: savedUser.email,
           avatar: savedUser.avatar,
-          inventory: savedUser.inventory,
         },
       });
     });
   });
 });
 
-// GET /users/me/:token — my profile, with an up-to-date inventory
+// GET /users/me/:token — my profile
 router.get("/me/:token", (req, res) => {
   User.findOne({ token: req.params.token }).then((data) => {
     if (!data) {
@@ -174,7 +171,6 @@ router.get("/me/:token", (req, res) => {
         username: data.username,
         email: data.email,
         avatar: data.avatar,
-        inventory: data.inventory,
       },
     });
   });
@@ -229,7 +225,6 @@ router.put("/me", (req, res) => {
             username: savedUser.username,
             email: savedUser.email,
             avatar: savedUser.avatar,
-            inventory: savedUser.inventory,
           },
         });
       });

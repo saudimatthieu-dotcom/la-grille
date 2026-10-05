@@ -5,12 +5,8 @@ const predictionSchema = new mongoose.Schema({
   grid: { type: mongoose.Schema.Types.ObjectId, ref: "grids" },
   event: { type: mongoose.Schema.Types.ObjectId, ref: "events" },
   payload: mongoose.Schema.Types.Mixed,
-  bonus: {
-    doubleur: { type: Boolean, default: false },
-    assurance: { type: Boolean, default: false },
-    bouclier: { type: Boolean, default: false },
-  },
-  // The real points (doubleur and assurance included) — a sabotage only counts in its league, see tactics
+  // The raw points, without any bonus: the general ranking and the public league.
+  // The bonuses and the sabotages are tactics, one league each — see leaguePoints.ts
   points: { type: Number, default: null },
   scoredAt: Date,
 });

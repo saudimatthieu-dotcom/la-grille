@@ -30,25 +30,21 @@ export type PredictionPayload = {
   finalist?: string;
 };
 
+export type BonusKind = "doubleur" | "assurance" | "bouclier";
+
+// The bonus put on one prediction in one league (one at most: bonuses don't stack)
 export type Bonus = {
-  doubleur: boolean;
-  assurance: boolean;
-  bouclier: boolean;
+  doubleur?: boolean;
+  assurance?: boolean;
+  bouclier?: boolean;
 };
 
 export type Prediction = {
   _id: string;
   event: string;
   payload: PredictionPayload;
-  bonus?: Bonus;
+  // Raw points, without any bonus — the bonuses count per league
   points: number | null;
-};
-
-export type Inventory = {
-  doubleur: number;
-  assurance: number;
-  bouclier: number;
-  sabotage: number;
 };
 
 // One line of the league chat — user is null for system logs (sabotage, bouclier)

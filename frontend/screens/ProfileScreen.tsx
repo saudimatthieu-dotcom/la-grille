@@ -61,8 +61,6 @@ export default function ProfileScreen({ navigation }: Props) {
     </TouchableOpacity>
   ));
 
-  const inventory = user.inventory;
-
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>PROFIL</Text>
@@ -99,12 +97,13 @@ export default function ProfileScreen({ navigation }: Props) {
       {message !== "" && <Text style={styles.message}>{message}</Text>}
       {error !== "" && <Text style={styles.error}>{error}</Text>}
 
+      {/* No stock to show any more: the bonuses are per league and per week, the BonusBar shows them */}
       <Text style={styles.section}>Mes bonus</Text>
-      <Text style={styles.inventory}>
-        ⚡ {inventory?.doubleur ?? 0} Doubleur · ☂️ {inventory?.assurance ?? 0} Assurance · 🛡️ {inventory?.bouclier ?? 0}{" "}
-        Bouclier
+      <Text style={styles.inventory}>⚡ 1 Doubleur · ☂️ 1 Assurance · 🛡️ 1 Bouclier</Text>
+      <Text style={styles.hint}>
+        Chaque semaine, dans chaque ligue privée. Un seul bonus par prono, perdu le lundi s&apos;il n&apos;est pas
+        utilisé. Pas d&apos;Assurance en F1 ni en cyclisme.
       </Text>
-      <Text style={styles.hint}>1 Doubleur offert chaque lundi.</Text>
 
       <TouchableOpacity style={styles.logout} onPress={handleLogout}>
         <Text style={styles.logoutText}>Se déconnecter</Text>

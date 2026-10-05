@@ -103,11 +103,11 @@ export default function WeekGrid({ leagueId, leagueName }: Props) {
         disabled={isFinished || isLocked}
         onPress={() => {
           if (event.sport === "football") {
-            navigation.navigate("FootballPrediction", { gridId, event, prediction });
+            navigation.navigate("FootballPrediction", { gridId, event, prediction, leagueId });
           } else if (event.sport === "basket" || event.sport === "rugby") {
-            navigation.navigate("OverUnderPrediction", { gridId, event, prediction });
+            navigation.navigate("OverUnderPrediction", { gridId, event, prediction, leagueId });
           } else if (event.sport === "f1" || event.sport === "tennis") {
-            navigation.navigate("PodiumPrediction", { gridId, event, prediction });
+            navigation.navigate("PodiumPrediction", { gridId, event, prediction, leagueId });
           }
         }}
       >

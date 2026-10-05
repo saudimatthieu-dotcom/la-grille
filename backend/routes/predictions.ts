@@ -10,7 +10,7 @@ import User from "../models/users";
 import { checkBody } from "../modules/checkBody";
 import { getWeek } from "../modules/getWeek";
 import { buildRanking } from "../modules/ranking";
-import { findSabotages, getSeasonPoints, getWeekPoints } from "../modules/leaguePoints";
+import { findTactics, getSeasonPoints, getWeekPoints, tacticsOf } from "../modules/leaguePoints";
 import { pointsInLeague } from "../modules/scoring";
 
 const router = express.Router();
@@ -75,7 +75,7 @@ router.get("/grid/:gridId/:token", (req, res) => {
 });
 
 // GET /predictions/results/:gridId/:token?leagueId= — my finished matches and my points (screen 10)
-// With a league: the points as they count in it (sabotages included) and my rank change there
+// With a league: the points as they count in it (its bonuses and sabotages) and my rank change there
 router.get("/results/:gridId/:token", (req, res) => {
   const leagueId = req.query.leagueId;
 
@@ -105,20 +105,20 @@ router.get("/results/:gridId/:token", (req, res) => {
 
         Prediction.find({ user: user._id, grid: grid._id }).then((predictions) => {
           // Each finished match of the grid, with what I predicted and what it gave me
-          const resultsOf = (sabotages: InstanceType<typeof Tactic>[]) =>
+          // tactics = the bonuses and sabotages of the league (none on the general grid: raw points)
+          const resultsOf = (tactics: InstanceType<typeof Tactic>[]) =>
             grid.events
               .filter((event) => event.status === "finished")
               .map((event) => {
                 const prediction = predictions.find((item) => item.event?.equals(event._id));
-                const sabotage = sabotages.find((tactic) => prediction && tactic.prediction?.equals(prediction._id));
-                const realPoints = prediction?.points ?? null;
+                const { bonus, sabotage } = tacticsOf(tactics, prediction?._id);
+                const rawPoints = prediction?.points ?? null;
 
                 return {
                   event,
                   payload: prediction?.payload ?? null,
-                  bonus: prediction?.bonus ?? null,
-                  points:
-                    realPoints === null ? null : pointsInLeague(realPoints, prediction?.bonus ?? {}, Boolean(sabotage)),
+                  bonus: leagueId ? bonus : null,
+                  points: rawPoints === null ? null : pointsInLeague(rawPoints, event.sport, bonus, Boolean(sabotage)),
                   sabotaged: Boolean(sabotage),
                   shieldTriggered: sabotage?.shieldTriggered ?? false,
                 };
@@ -150,14 +150,14 @@ router.get("/results/:gridId/:token", (req, res) => {
             }
 
             Promise.all([
-              findSabotages(
+              findTactics(
                 league._id,
                 predictions.map((prediction) => prediction._id)
               ),
               getWeekPoints(league, season, week),
               User.find({ _id: { $in: league.members.map((member) => member.user) } }),
-            ]).then(([sabotages, weekPoints, users]) => {
-              const results = resultsOf(sabotages);
+            ]).then(([tactics, weekPoints, users]) => {
+              const results = resultsOf(tactics);
               const myId = String(user._id);
 
               // An old week: no rank move — "before → after" that week would need every week played since

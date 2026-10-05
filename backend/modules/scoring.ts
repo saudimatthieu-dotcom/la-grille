@@ -145,13 +145,26 @@ export function maxPoints(sport: string) {
   return 0;
 }
 
+export type BonusKind = "doubleur" | "assurance" | "bouclier";
+
+export const BONUS_KINDS: BonusKind[] = ["doubleur", "assurance", "bouclier"];
+
+// Every week, in every private league: 1 of each — what isn't used is lost on Monday
+export const BONUS_PER_WEEK = 1;
+
+// The bonus a player put on one prediction in one league (one at most: bonuses don't stack)
 export type Bonus = {
   doubleur?: boolean;
   assurance?: boolean;
   bouclier?: boolean;
 };
 
-// Applies the bonuses to the raw points of one prediction — the real points, the same in every ranking
+// The Assurance gives the max: on a podium (F1, cycling) that's 6 points for almost nothing, so it's not allowed there
+export function isBonusAllowed(kind: string, sport: string) {
+  return !(kind === "assurance" && (sport === "f1" || sport === "cyclisme"));
+}
+
+// Applies a bonus to the raw points of one prediction
 export function applyTactics(points: number, sport: string, bonus: Bonus) {
   let finalPoints = points;
 
@@ -166,11 +179,12 @@ export function applyTactics(points: number, sport: string, bonus: Bonus) {
   return finalPoints;
 }
 
-// What a prediction is worth in one league: a sabotage there sets it to 0, unless the Bouclier blocks it
-export function pointsInLeague(points: number, bonus: Bonus, isSabotagedHere: boolean) {
+// What a prediction is worth in one league: the raw points with that league's bonus —
+// or 0 if it was sabotaged there, unless the Bouclier blocks it
+export function pointsInLeague(rawPoints: number, sport: string, bonus: Bonus, isSabotagedHere: boolean) {
   if (isSabotagedHere && !bonus.bouclier) {
     return 0;
   }
 
-  return points;
+  return applyTactics(rawPoints, sport, bonus);
 }

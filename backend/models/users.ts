@@ -6,15 +6,8 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   token: String,
   avatar: String,
-  // Season total on the general grid (the general ranking) — sabotages don't count here
+  // Season total on the general grid (the general ranking) — no bonus and no sabotage here
   points: { type: Number, default: 0 },
-  inventory: {
-    doubleur: { type: Number, default: 0 },
-    // Starting stock: 1 assurance + 1 bouclier at signup (then bought in the shop, later)
-    assurance: { type: Number, default: 1 },
-    bouclier: { type: Number, default: 1 },
-    sabotage: { type: Number, default: 0 },
-  },
   // Forgot password: the 6-digit code is stored hashed (like the password), valid 15 min, 5 tries max
   resetCode: { type: String, default: null },
   resetExpires: { type: Date, default: null },

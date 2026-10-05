@@ -53,9 +53,9 @@ export type RootStackParamList = {
   MainTabs: undefined;
   CreateLeague: undefined;
   League: { leagueId: string; leagueName: string };
-  FootballPrediction: { gridId: string; event: SportEvent; prediction?: Prediction };
-  OverUnderPrediction: { gridId: string; event: SportEvent; prediction?: Prediction };
-  PodiumPrediction: { gridId: string; event: SportEvent; prediction?: Prediction };
+  FootballPrediction: { gridId: string; event: SportEvent; prediction?: Prediction; leagueId?: string };
+  OverUnderPrediction: { gridId: string; event: SportEvent; prediction?: Prediction; leagueId?: string };
+  PodiumPrediction: { gridId: string; event: SportEvent; prediction?: Prediction; leagueId?: string };
   Ranking: { leagueId: string; leagueName: string };
   Sabotage: { leagueId: string; targetUserId: string; targetUsername: string };
   Chat: { leagueId: string; leagueName: string };

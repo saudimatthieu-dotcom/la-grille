@@ -18,7 +18,7 @@ function onlyDigits(text: string) {
 }
 
 export default function FootballPredictionScreen({ navigation, route }: Props) {
-  const { gridId, event, prediction } = route.params;
+  const { gridId, event, prediction, leagueId } = route.params;
   const payload = prediction?.payload;
   const token = useSelector((state: RootState) => state.user.value.token);
 
@@ -103,7 +103,7 @@ export default function FootballPredictionScreen({ navigation, route }: Props) {
         </View>
       </View>
 
-      <BonusBar sport={event.sport} predictionId={prediction?._id} initialBonus={prediction?.bonus} />
+      <BonusBar sport={event.sport} predictionId={prediction?._id} leagueId={leagueId} />
 
       {error !== "" && <Text style={styles.error}>{error}</Text>}
 

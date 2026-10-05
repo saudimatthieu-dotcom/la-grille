@@ -1,4 +1,4 @@
-import { applyTactics, pointsInLeague, scoreFootball, scoreOverUnder, scorePodium, scoreTennis, scorePrediction } from "./scoring";
+import { applyTactics, isBonusAllowed, pointsInLeague, scoreFootball, scoreOverUnder, scorePodium, scoreTennis, scorePrediction } from "./scoring";
 
 describe("scoreFootball", () => {
   const result = { homeScore: 2, awayScore: 1 };
@@ -135,21 +135,42 @@ describe("applyTactics", () => {
     expect(applyTactics(0, "basket", { assurance: true })).toBe(0);
   });
 
-  it("applies the assurance before the doubleur", () => {
-    expect(applyTactics(1, "football", { assurance: true, doubleur: true })).toBe(6);
-  });
 });
 
 describe("pointsInLeague", () => {
-  it("keeps the real points when there is no sabotage in this league", () => {
-    expect(pointsInLeague(6, { doubleur: true }, false)).toBe(6);
+  it("keeps the raw points without bonus or sabotage in this league", () => {
+    expect(pointsInLeague(1, "football", {}, false)).toBe(1);
   });
 
-  it("sets a sabotaged prediction to 0", () => {
-    expect(pointsInLeague(6, { doubleur: true }, true)).toBe(0);
+  it("adds this league's doubleur", () => {
+    expect(pointsInLeague(3, "football", { doubleur: true }, false)).toBe(6);
+  });
+
+  it("adds this league's assurance", () => {
+    expect(pointsInLeague(1, "football", { assurance: true }, false)).toBe(3);
+  });
+
+  it("sets a sabotaged prediction to 0, doubleur or not", () => {
+    expect(pointsInLeague(3, "football", { doubleur: true }, true)).toBe(0);
   });
 
   it("keeps the points when the bouclier blocks the sabotage", () => {
-    expect(pointsInLeague(3, { bouclier: true }, true)).toBe(3);
+    expect(pointsInLeague(3, "football", { bouclier: true }, true)).toBe(3);
+  });
+});
+
+describe("isBonusAllowed", () => {
+  it("refuses the assurance in F1 and cycling", () => {
+    expect(isBonusAllowed("assurance", "f1")).toBe(false);
+    expect(isBonusAllowed("assurance", "cyclisme")).toBe(false);
+  });
+
+  it("allows the doubleur and the bouclier in F1", () => {
+    expect(isBonusAllowed("doubleur", "f1")).toBe(true);
+    expect(isBonusAllowed("bouclier", "f1")).toBe(true);
+  });
+
+  it("allows the assurance in football", () => {
+    expect(isBonusAllowed("assurance", "football")).toBe(true);
   });
 });

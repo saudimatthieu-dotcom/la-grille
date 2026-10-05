@@ -4,11 +4,10 @@ import type { CompositeScreenProps } from "@react-navigation/native";
 import { useIsFocused } from "@react-navigation/native";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 
 import type { RootState, RootStackParamList, TabParamList } from "../App";
-import { updateInventory } from "../reducers/user";
 import { colors } from "../config/theme";
 import { GRID_TYPES } from "../config/gridTypes";
 import Avatar from "../components/Avatar";
@@ -34,14 +33,13 @@ type MyLeague = {
 type Latest = { text: string; leagueId: string; leagueName: string } | null;
 
 export default function HomeScreen({ navigation }: Props) {
-  const dispatch = useDispatch();
   const user = useSelector((state: RootState) => state.user.value);
 
   const [leagues, setLeagues] = useState<MyLeague[]>([]);
   const [latest, setLatest] = useState<Latest>(null);
   const isFocused = useIsFocused();
 
-  // Reloads my leagues, my inventory and the latest news every time I come back to this tab
+  // Reloads my leagues and the latest news every time I come back to this tab
   useEffect(() => {
     if (!isFocused) {
       return;
@@ -58,15 +56,6 @@ export default function HomeScreen({ navigation }: Props) {
       })
       .catch(() => {});
 
-    fetch(`${url}/users/me/${user.token}`)
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.result) {
-          dispatch(updateInventory(data.user.inventory));
-        }
-      })
-      .catch(() => {});
-
     fetch(`${url}/messages/latest/${user.token}`)
       .then((response) => response.json())
       .then((data) => {
@@ -75,7 +64,7 @@ export default function HomeScreen({ navigation }: Props) {
         }
       })
       .catch(() => {});
-  }, [isFocused, user.token, dispatch]);
+  }, [isFocused, user.token]);
 
   // A grid is "to complete" while I haven't predicted every match (or haven't opened it yet)
   const toComplete = leagues.filter((league) => league.total === null || league.filled < league.total).length;

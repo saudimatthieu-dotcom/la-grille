@@ -39,6 +39,8 @@ function tagsOf(item: ResultItem) {
 
   if (item.sabotaged) {
     tags.push(item.shieldTriggered ? "🛡️ Sabotage bloqué" : "💣 Saboté");
+  } else if (item.bonus?.bouclier) {
+    tags.push("🛡️ Bouclier");
   }
   if (item.bonus?.doubleur) {
     tags.push("⚡ Doubleur");
