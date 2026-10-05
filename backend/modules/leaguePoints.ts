@@ -23,9 +23,9 @@ export function findSabotages(leagueId: mongoose.Types.ObjectId, predictionIds: 
   return Tactic.find({ league: leagueId, kind: "sabotage", prediction: { $in: predictionIds } });
 }
 
-// Points of every member on this week's grid, as they count in this league — { userId: points }
-export function getWeekPoints(league: LeagueDoc) {
-  return Grid.findOne({ season: new Date().getFullYear(), week: getWeek(new Date()) }).then((grid) => {
+// Points of every member on one week's grid (this week by default), as they count in this league — { userId: points }
+export function getWeekPoints(league: LeagueDoc, season = new Date().getFullYear(), week = getWeek(new Date())) {
+  return Grid.findOne({ season, week }).then((grid) => {
     if (!grid) {
       return {} as Record<string, number>;
     }

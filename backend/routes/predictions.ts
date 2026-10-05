@@ -8,6 +8,7 @@ import Prediction from "../models/predictions";
 import Tactic from "../models/tactics";
 import User from "../models/users";
 import { checkBody } from "../modules/checkBody";
+import { getWeek } from "../modules/getWeek";
 import { buildRanking } from "../modules/ranking";
 import { findSabotages, getSeasonPoints, getWeekPoints } from "../modules/leaguePoints";
 import { pointsInLeague } from "../modules/scoring";
@@ -97,6 +98,11 @@ router.get("/results/:gridId/:token", (req, res) => {
           return;
         }
 
+        // An old week (opened from the Semaine tab's arrows) or this one
+        const season = grid.season ?? 0;
+        const week = grid.week ?? 0;
+        const isThisWeek = season === new Date().getFullYear() && week === getWeek(new Date());
+
         Prediction.find({ user: user._id, grid: grid._id }).then((predictions) => {
           // Each finished match of the grid, with what I predicted and what it gave me
           const resultsOf = (sabotages: InstanceType<typeof Tactic>[]) =>
@@ -125,6 +131,9 @@ router.get("/results/:gridId/:token", (req, res) => {
             res.json({
               result: true,
               leagueName: null,
+              season,
+              week,
+              isThisWeek,
               results,
               weekPoints: results.reduce((total, item) => total + (item.points ?? 0), 0),
               rankBefore: null,
@@ -145,10 +154,28 @@ router.get("/results/:gridId/:token", (req, res) => {
                 league._id,
                 predictions.map((prediction) => prediction._id)
               ),
-              getWeekPoints(league),
+              getWeekPoints(league, season, week),
               User.find({ _id: { $in: league.members.map((member) => member.user) } }),
             ]).then(([sabotages, weekPoints, users]) => {
               const results = resultsOf(sabotages);
+              const myId = String(user._id);
+
+              // An old week: no rank move — "before → after" that week would need every week played since
+              if (!isThisWeek) {
+                res.json({
+                  result: true,
+                  leagueName: league.name,
+                  season,
+                  week,
+                  isThisWeek,
+                  results,
+                  weekPoints: weekPoints[myId] ?? 0,
+                  rankBefore: null,
+                  rankNow: null,
+                  passed: [],
+                });
+                return;
+              }
 
               // Rank before this week = the season total minus this week's points
               const members = users.map((member) => ({ userId: String(member._id), username: member.username }));
@@ -160,7 +187,6 @@ router.get("/results/:gridId/:token", (req, res) => {
 
               const rankingNow = buildRanking(members, seasonPoints);
               const rankingBefore = buildRanking(members, pointsBefore);
-              const myId = String(user._id);
               const rankNow = rankingNow.find((row) => row.userId === myId)?.rank ?? 1;
               const rankBefore = rankingBefore.find((row) => row.userId === myId)?.rank ?? 1;
 
@@ -173,6 +199,9 @@ router.get("/results/:gridId/:token", (req, res) => {
               res.json({
                 result: true,
                 leagueName: league.name,
+                season,
+                week,
+                isThisWeek,
                 results,
                 weekPoints: weekPoints[myId] ?? 0,
                 rankBefore,

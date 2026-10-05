@@ -8,7 +8,7 @@ import type { RootState, RootStackParamList } from "../App";
 import { colors } from "../config/theme";
 import { SPORT_ICONS } from "../config/sports";
 import type { Bonus, PredictionPayload, SportEvent } from "../types";
-import { eventTitle, formatDate, formatPayload, formatResult, ordinal } from "../utils/format";
+import { eventTitle, formatDate, formatPayload, formatResult, formatWeek, ordinal } from "../utils/format";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Result">;
 
@@ -22,6 +22,9 @@ type ResultItem = {
 };
 
 type Results = {
+  season: number;
+  week: number;
+  isThisWeek: boolean;
   results: ResultItem[];
   weekPoints: number;
   // null on the general grid: there's only a rank inside a league
@@ -112,7 +115,9 @@ export default function ResultScreen({ navigation, route }: Props) {
 
       {data && (
         <View style={styles.summary}>
-          <Text style={styles.label}>CETTE SEMAINE</Text>
+          <Text style={styles.label}>
+            {data.isThisWeek ? "CETTE SEMAINE" : formatWeek(data.season, data.week).toUpperCase()}
+          </Text>
           <Text style={styles.weekPoints}>+{data.weekPoints} pts</Text>
 
           {data.rankBefore !== null && data.rankNow !== null && (

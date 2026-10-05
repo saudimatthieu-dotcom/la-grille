@@ -2,16 +2,27 @@ import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useSelector } from "react-redux";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 
 import type { RootState, RootStackParamList } from "../App";
 import { colors } from "../config/theme";
 import Avatar from "../components/Avatar";
 import LeagueHeader from "../components/LeagueHeader";
+import { formatWeek } from "../utils/format";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Ranking">;
 
 type Scope = "week" | "season";
+
+type WeekRef = { season: number; week: number };
+
+// The week shown in the Semaine tab, sent back by the ranking route
+type WeekInfo = WeekRef & {
+  isThisWeek: boolean;
+  gridId: string | null;
+  previous: WeekRef | null;
+  next: WeekRef | null;
+};
 
 type RankingRow = {
   userId: string;
@@ -30,22 +41,28 @@ export default function RankingScreen({ navigation, route }: Props) {
   const username = useSelector((state: RootState) => state.user.value.username);
 
   const [scope, setScope] = useState<Scope>("season");
+  // null = this week; the arrows of the Semaine tab pick an older one
+  const [selectedWeek, setSelectedWeek] = useState<WeekRef | null>(null);
+  const [weekInfo, setWeekInfo] = useState<WeekInfo | null>(null);
   const [ranking, setRanking] = useState<RankingRow[]>([]);
   const [error, setError] = useState("");
 
-  // Runs again every time the Semaine / Saison toggle changes
+  // Runs again every time the Semaine / Saison toggle or the week changes
   useEffect(() => {
-    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/leagues/${leagueId}/ranking/${token}?scope=${scope}`)
+    const weekQuery = scope === "week" && selectedWeek ? `&season=${selectedWeek.season}&week=${selectedWeek.week}` : "";
+
+    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/leagues/${leagueId}/ranking/${token}?scope=${scope}${weekQuery}`)
       .then((response) => response.json())
       .then((data) => {
         if (data.result) {
           setRanking(data.ranking);
+          setWeekInfo(data);
         } else {
           setError(data.error);
         }
       })
       .catch(() => setError("Impossible to connect to server"));
-  }, [leagueId, token, scope]);
+  }, [leagueId, token, scope, selectedWeek]);
 
   // The sabotage belongs to the lanterne rouge of the season ranking
   const amLastPlace = scope === "season" && ranking.some((row) => row.username === username && row.isLastPlace);
@@ -107,6 +124,29 @@ export default function RankingScreen({ navigation, route }: Props) {
         </TouchableOpacity>
       </View>
 
+      {/* ◀ 28 sept. – 4 oct. ▶ : go back to the past weeks */}
+      {scope === "week" && weekInfo && (
+        <View style={styles.weekPicker}>
+          <TouchableOpacity
+            disabled={!weekInfo.previous}
+            onPress={() => setSelectedWeek(weekInfo.previous)}
+            style={!weekInfo.previous && styles.arrowDisabled}
+          >
+            <Ionicons name="chevron-back" size={26} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={styles.weekLabel}>
+            {weekInfo.isThisWeek ? "Cette semaine" : formatWeek(weekInfo.season, weekInfo.week)}
+          </Text>
+          <TouchableOpacity
+            disabled={!weekInfo.next}
+            onPress={() => setSelectedWeek(weekInfo.next)}
+            style={!weekInfo.next && styles.arrowDisabled}
+          >
+            <Ionicons name="chevron-forward" size={26} color={colors.text} />
+          </TouchableOpacity>
+        </View>
+      )}
+
       {error !== "" && <Text style={styles.error}>{error}</Text>}
 
       {amLastPlace && (
@@ -116,6 +156,16 @@ export default function RankingScreen({ navigation, route }: Props) {
       )}
 
       {rows}
+
+      {/* My grid of the week shown above: my predictions, the real results and my points */}
+      {scope === "week" && weekInfo?.gridId && (
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() => weekInfo.gridId && navigation.navigate("Result", { gridId: weekInfo.gridId, leagueId, leagueName })}
+        >
+          <Text style={styles.buttonText}>VOIR MA GRILLE</Text>
+        </TouchableOpacity>
+      )}
     </ScrollView>
   );
 }
@@ -152,6 +202,20 @@ const styles = StyleSheet.create({
   },
   toggleTextSelected: {
     color: colors.bg,
+  },
+  weekPicker: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  weekLabel: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  arrowDisabled: {
+    opacity: 0.25,
   },
   error: {
     color: colors.danger,
@@ -226,5 +290,17 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderRadius: 10,
     padding: 6,
+  },
+  button: {
+    backgroundColor: colors.accent,
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  buttonText: {
+    color: colors.bg,
+    fontSize: 16,
+    fontWeight: "800",
   },
 });

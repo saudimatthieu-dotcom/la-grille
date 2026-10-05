@@ -13,6 +13,19 @@ import { getSeasonPoints, getWeekPoints } from "../modules/leaguePoints";
 
 const router = express.Router();
 
+// The closest week before (or after) this one that has a grid — null when there is none
+function findOtherWeek(season: number, week: number, direction: "previous" | "next") {
+    const filter =
+        direction === "previous"
+            ? { $or: [{ season, week: { $lt: week } }, { season: { $lt: season } }] }
+            : { $or: [{ season, week: { $gt: week } }, { season: { $gt: season } }] };
+    const order = direction === "previous" ? -1 : 1;
+
+    return Grid.findOne(filter)
+        .sort({ season: order, week: order })
+        .then((grid) => (grid ? { season: grid.season, week: grid.week } : null));
+}
+
 // POST /leagues — create
 router.post("/", (req, res) => {
     if (!checkBody(req.body, ["token", "name", "gridType"])) {
@@ -121,7 +134,7 @@ router.get("/user/:token", (req, res) => {
     });
 });
 
-// GET /leagues/:leagueId/ranking/:token?scope=week|season — league ranking (screen 8)
+// GET /leagues/:leagueId/ranking/:token?scope=week|season&season=2026&week=39 — league ranking (screen 8)
 router.get("/:leagueId/ranking/:token", (req, res) => {
     if (!mongoose.isValidObjectId(req.params.leagueId)) {
         res.json({ result: false, error: "Invalid league id" });
@@ -129,6 +142,13 @@ router.get("/:leagueId/ranking/:token", (req, res) => {
     }
 
     const scope = req.query.scope === "week" ? "week" : "season";
+
+    // The week to rank: this week by default, or an older one with ?season=…&week=… (Semaine tab only)
+    const now = new Date();
+    const thisSeason = now.getFullYear();
+    const thisWeek = getWeek(now);
+    const season = (scope === "week" && Number(req.query.season)) || thisSeason;
+    const week = (scope === "week" && Number(req.query.week)) || thisWeek;
 
     User.findOne({ token: req.params.token }).then((user) => {
         if (!user) {
@@ -158,7 +178,12 @@ router.get("/:leagueId/ranking/:token", (req, res) => {
                     avatar: member.avatar,
                 }));
 
-                getWeekPoints(league).then((weekPoints) => {
+                Promise.all([
+                    getWeekPoints(league, season, week),
+                    Grid.findOne({ season, week }),
+                    findOtherWeek(season, week, "previous"),
+                    findOtherWeek(season, week, "next"),
+                ]).then(([weekPoints, grid, previous, next]) => {
                     const points = scope === "season" ? getSeasonPoints(league) : weekPoints;
 
                     // weekPoints on every row: the "+3 this week" shown next to the season total
@@ -167,7 +192,18 @@ router.get("/:leagueId/ranking/:token", (req, res) => {
                         weekPoints: weekPoints[row.userId] ?? 0,
                     }));
 
-                    res.json({ result: true, scope, ranking });
+                    res.json({
+                        result: true,
+                        scope,
+                        ranking,
+                        // The Semaine tab's arrows: which week this is, its grid (to open my results) and its neighbours
+                        season,
+                        week,
+                        isThisWeek: season === thisSeason && week === thisWeek,
+                        gridId: grid?._id ?? null,
+                        previous,
+                        next,
+                    });
                 });
             });
         });

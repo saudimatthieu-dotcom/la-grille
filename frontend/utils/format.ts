@@ -32,6 +32,16 @@ export function formatTime(date: string) {
   });
 }
 
+// "28 sept. – 4 oct." for a week number (ISO weeks: Monday → Sunday, January 4th is always in week 1)
+export function formatWeek(season: number, week: number) {
+  const january4 = new Date(season, 0, 4);
+  const monday = new Date(season, 0, 4 - ((january4.getDay() + 6) % 7) + (week - 1) * 7);
+  const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6);
+  const options: Intl.DateTimeFormatOptions = { day: "numeric", month: "short" };
+
+  return `${monday.toLocaleDateString("fr-FR", options)} – ${sunday.toLocaleDateString("fr-FR", options)}`;
+}
+
 // "2–1" for team sports, the podium for F1, the winner for tennis
 export function formatResult(event: SportEvent) {
   const result = event.result;
