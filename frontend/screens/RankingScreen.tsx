@@ -45,6 +45,7 @@ export default function RankingScreen({ navigation, route }: Props) {
   const [selectedWeek, setSelectedWeek] = useState<WeekRef | null>(null);
   const [weekInfo, setWeekInfo] = useState<WeekInfo | null>(null);
   const [ranking, setRanking] = useState<RankingRow[]>([]);
+  const [isPublic, setIsPublic] = useState(false);
   const [error, setError] = useState("");
 
   // Runs again every time the Semaine / Saison toggle or the week changes
@@ -57,6 +58,7 @@ export default function RankingScreen({ navigation, route }: Props) {
         if (data.result) {
           setRanking(data.ranking);
           setWeekInfo(data);
+          setIsPublic(data.isPublic);
         } else {
           setError(data.error);
         }
@@ -64,8 +66,9 @@ export default function RankingScreen({ navigation, route }: Props) {
       .catch(() => setError("Impossible to connect to server"));
   }, [leagueId, token, scope, selectedWeek]);
 
-  // The sabotage belongs to the lanterne rouge of the season ranking
-  const amLastPlace = scope === "season" && ranking.some((row) => row.username === username && row.isLastPlace);
+  // The sabotage belongs to the lanterne rouge of the season ranking — never in the public league
+  const amLastPlace =
+    !isPublic && scope === "season" && ranking.some((row) => row.username === username && row.isLastPlace);
 
   const rows = ranking.map((row) => {
     const isMe = row.username === username;

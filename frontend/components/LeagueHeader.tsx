@@ -30,6 +30,7 @@ export default function LeagueHeader({ leagueId, leagueName, active }: Props) {
   const username = useSelector((state: RootState) => state.user.value.username);
 
   const [stats, setStats] = useState<{ rank: number; total: number; weekPoints: number } | null>(null);
+  const [isPublic, setIsPublic] = useState(false);
 
   useEffect(() => {
     fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/leagues/${leagueId}/ranking/${token}?scope=season`)
@@ -38,7 +39,8 @@ export default function LeagueHeader({ leagueId, leagueName, active }: Props) {
         if (!data.result) {
           return;
         }
-        const me = data.ranking.find((row: { username: string }) => row.username === username);
+        setIsPublic(data.isPublic);
+        const me =data.ranking.find((row: { username: string }) => row.username === username);
         if (me) {
           setStats({ rank: me.rank, total: data.ranking.length, weekPoints: me.weekPoints });
         }
@@ -46,7 +48,8 @@ export default function LeagueHeader({ leagueId, leagueName, active }: Props) {
       .catch(() => {});
   }, [leagueId, token, username]);
 
-  const tabs = TABS.map((tab) => {
+  // The public league has no chat: only Grille and Classement
+  const tabs = TABS.filter((tab) => !(isPublic && tab.name === "Chat")).map((tab) => {
     const isActive = tab.name === active;
 
     return (

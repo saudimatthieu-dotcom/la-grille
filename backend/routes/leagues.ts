@@ -196,6 +196,8 @@ router.get("/:leagueId/ranking/:token", (req, res) => {
                         result: true,
                         scope,
                         ranking,
+                        // The public league has no Chat tab and no sabotage
+                        isPublic: Boolean(league.isPublic),
                         // The Semaine tab's arrows: which week this is, its grid (to open my results) and its neighbours
                         season,
                         week,

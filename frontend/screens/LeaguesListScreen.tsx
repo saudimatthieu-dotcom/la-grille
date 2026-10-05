@@ -18,6 +18,7 @@ type League = {
   name: string;
   code: string;
   gridType: string;
+  isPublic?: boolean;
   members: { user: string; points: number }[];
   myRank: number;
   filled: number;
@@ -70,7 +71,8 @@ export default function LeaguesListScreen({ navigation }: Props) {
           </View>
           <Text style={styles.cardType}>Grille {gridType?.label.toLowerCase()}</Text>
           <Text style={styles.cardInfo}>
-            {ordinal(league.myRank)} / {league.members.length} · code {league.code}
+            {/* No invite code for the public league: everyone is already in it */}
+            {ordinal(league.myRank)} / {league.members.length} · {league.isPublic ? "ouverte à tous" : `code ${league.code}`}
           </Text>
           <View style={styles.progressRow}>
             <View style={styles.progressBar}>
