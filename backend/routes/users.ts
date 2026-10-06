@@ -3,11 +3,17 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 import uid2 from "uid2";
 
+import Event from "../models/events";
+import Prediction from "../models/predictions";
+import Tactic from "../models/tactics";
 import User from "../models/users";
 import { AVATARS } from "../config/avatars";
 import { checkBody } from "../modules/checkBody";
 import { joinPublicLeague } from "../modules/publicLeague";
+import { BONUS_KINDS } from "../modules/scoring";
+import type { BonusKind } from "../modules/scoring";
 import { sendResetCode } from "../modules/sendResetCode";
+import { computeStats } from "../modules/stats";
 
 const RESET_CODE_MINUTES = 15;
 const RESET_MAX_ATTEMPTS = 5;
@@ -172,6 +178,39 @@ router.get("/me/:token", (req, res) => {
         email: data.email,
         avatar: data.avatar,
       },
+    });
+  });
+});
+
+// GET /users/me/stats/:token — my stats: % of correct predictions, per sport, and the bonuses that paid off
+router.get("/me/stats/:token", (req, res) => {
+  User.findOne({ token: req.params.token }).then((user) => {
+    if (!user) {
+      res.json({ result: false, error: "User not found" });
+      return;
+    }
+
+    Promise.all([
+      // My scored predictions, in all my leagues, with the sport of their match
+      Prediction.find({ user: user._id, points: { $ne: null } }).populate<{ event: InstanceType<typeof Event> }>(
+        "event",
+        "sport"
+      ),
+      // The bonuses I used, and the sabotages that hit me (a bouclier only pays off against one)
+      Tactic.find({ actor: user._id, kind: { $in: BONUS_KINDS } }),
+      Tactic.find({ target: user._id, kind: "sabotage" }),
+    ]).then(([predictions, bonuses, sabotages]) => {
+      const stats = computeStats(
+        predictions.map((prediction) => ({
+          id: String(prediction._id),
+          sport: prediction.event?.sport ?? "",
+          points: prediction.points ?? 0,
+        })),
+        bonuses.map((bonus) => ({ kind: bonus.kind as BonusKind, predictionId: String(bonus.prediction) })),
+        sabotages.map((sabotage) => String(sabotage.prediction))
+      );
+
+      res.json({ result: true, stats });
     });
   });
 });

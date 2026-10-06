@@ -7,3 +7,14 @@ export const SPORT_ICONS = {
   cyclisme: "bicycle-outline",
   tennis: "tennisball-outline",
 } as const;
+
+// The sport's name, as shown to the players (stats screen)
+export const SPORT_LABELS: Record<string, string> = {
+  football: "Football",
+  basket: "Basket",
+  rugby: "Rugby",
+  handball: "Handball",
+  f1: "Formule 1",
+  cyclisme: "Cyclisme",
+  tennis: "Tennis",
+};

@@ -4,6 +4,7 @@ import type { CompositeScreenProps } from "@react-navigation/native";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useDispatch, useSelector } from "react-redux";
+import { Ionicons } from "@expo/vector-icons";
 
 import type { RootState, RootStackParamList, TabParamList } from "../App";
 import { colors } from "../config/theme";
@@ -96,6 +97,11 @@ export default function ProfileScreen({ navigation }: Props) {
 
       {message !== "" && <Text style={styles.message}>{message}</Text>}
       {error !== "" && <Text style={styles.error}>{error}</Text>}
+
+      <TouchableOpacity style={styles.statsButton} onPress={() => navigation.navigate("Stats")}>
+        <Ionicons name="stats-chart" size={20} color={colors.bg} />
+        <Text style={styles.statsText}>MES STATS</Text>
+      </TouchableOpacity>
 
       {/* No stock to show any more: the bonuses are per league and per week, the BonusBar shows them */}
       <Text style={styles.section}>Mes bonus</Text>
@@ -212,6 +218,22 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 15,
     fontWeight: "700",
+  },
+  statsButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: colors.accent,
+    borderRadius: 14,
+    paddingVertical: 14,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  statsText: {
+    color: colors.bg,
+    fontSize: 16,
+    fontWeight: "800",
   },
   hint: {
     color: colors.muted,

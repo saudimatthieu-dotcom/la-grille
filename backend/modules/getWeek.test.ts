@@ -1,4 +1,4 @@
-import { getSeason, getWeek } from "./getWeek";
+import { getSeason, getWeek, getWeekStart } from "./getWeek";
 
 describe("getWeek and getSeason", () => {
   it("gives the week and the season of an ordinary day", () => {
@@ -22,5 +22,22 @@ describe("getWeek and getSeason", () => {
     // Monday 29 Dec 2025 is in week 1 of 2026
     expect(getWeek(new Date(2025, 11, 29))).toBe(1);
     expect(getSeason(new Date(2025, 11, 29))).toBe(2026);
+  });
+});
+
+describe("getWeekStart", () => {
+  it("gives the Monday of a week", () => {
+    expect(getWeekStart(2026, 41)).toEqual(new Date(2026, 9, 5));
+  });
+
+  it("finds the Mondays that are in the year before", () => {
+    expect(getWeekStart(2026, 1)).toEqual(new Date(2025, 11, 29));
+    expect(getWeekStart(2026, 53)).toEqual(new Date(2026, 11, 28));
+  });
+
+  it("is the reverse of getSeason + getWeek", () => {
+    const monday = getWeekStart(2027, 10);
+    expect(getSeason(monday)).toBe(2027);
+    expect(getWeek(monday)).toBe(10);
   });
 });

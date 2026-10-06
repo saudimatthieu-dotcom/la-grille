@@ -9,6 +9,7 @@ import User from "../models/users";
 import { tacticsOf } from "../modules/leaguePoints";
 import { getPublicLeague } from "../modules/publicLeague";
 import { pointsInLeague, scorePrediction } from "../modules/scoring";
+import { postWeeklyRecaps } from "../modules/weeklyRecap";
 import type { Result } from "../modules/scoring";
 import { THESPORTSDB_COMPETITIONS } from "../config/competitions";
 import { fetchUpcomingEvents, fetchEventResult } from "../providers/thesportsdb";
@@ -165,9 +166,12 @@ router.post("/score", (req, res) => {
               };
             });
 
-            Promise.all([Message.insertMany(messages), ...tacticSaves]).then(() => {
-              res.json({ result: true, scored: predictions.length });
-            });
+            Promise.all([Message.insertMany(messages), ...tacticSaves])
+              // Last: a finished week gets its recap in each league's chat (only once, see weeklyRecap.ts)
+              .then(() => postWeeklyRecaps())
+              .then((recaps) => {
+                res.json({ result: true, scored: predictions.length, recaps });
+              });
           });
         });
       });

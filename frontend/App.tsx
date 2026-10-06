@@ -21,6 +21,7 @@ import SabotageScreen from "./screens/SabotageScreen";
 import ResultScreen from "./screens/ResultScreen";
 import GridsScreen from "./screens/GridsScreen";
 import ProfileScreen from "./screens/ProfileScreen";
+import StatsScreen from "./screens/StatsScreen";
 import type { LeagueTab, Prediction, SportEvent } from "./types";
 
 import { Provider, useSelector } from "react-redux";
@@ -58,6 +59,7 @@ export type RootStackParamList = {
   Sabotage: { leagueId: string; targetUserId: string; targetUsername: string };
   // Without a league: the general grid's results (no league rank)
   Result: { gridId: string; leagueId?: string; leagueName?: string };
+  Stats: undefined;
 };
 
 export type TabParamList = {
@@ -126,6 +128,7 @@ function RootNavigator() {
       <Stack.Screen name="PodiumPrediction" component={PodiumPredictionScreen} />
       <Stack.Screen name="Sabotage" component={SabotageScreen} />
       <Stack.Screen name="Result" component={ResultScreen} />
+      <Stack.Screen name="Stats" component={StatsScreen} />
     </Stack.Navigator>
   );
 }

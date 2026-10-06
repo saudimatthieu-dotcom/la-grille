@@ -18,3 +18,10 @@ export function getWeek(date: Date) {
 export function getSeason(date: Date) {
   return weekThursday(date).getUTCFullYear();
 }
+
+// Monday 00:00 of a week, the other way round — 4 January is always in week 1 of its season
+export function getWeekStart(season: number, week: number) {
+  const january4 = new Date(season, 0, 4);
+  const firstMonday = january4.getDate() - ((january4.getDay() + 6) % 7);
+  return new Date(season, 0, firstMonday + (week - 1) * 7);
+}
