@@ -9,7 +9,7 @@ import Prediction from "../models/predictions";
 import Tactic from "../models/tactics";
 import User from "../models/users";
 import { checkBody } from "../modules/checkBody";
-import { getWeek } from "../modules/getWeek";
+import { getSeason, getWeek } from "../modules/getWeek";
 import { findSabotages } from "../modules/leaguePoints";
 import { buildRanking } from "../modules/ranking";
 import { BONUS_KINDS, BONUS_PER_WEEK, isBonusAllowed } from "../modules/scoring";
@@ -220,7 +220,7 @@ router.post("/bonus", (req, res) => {
 
 // Checks that a user may sabotage this rival in this league this week — gives back an error, or the league + this week's grid
 function checkSaboteur(leagueId: string, userId: mongoose.Types.ObjectId, targetUserId: string) {
-  const season = new Date().getFullYear();
+  const season = getSeason(new Date());
   const week = getWeek(new Date());
 
   return League.findById(leagueId).then((league) => {
@@ -239,7 +239,7 @@ function checkSaboteur(leagueId: string, userId: mongoose.Types.ObjectId, target
       return { error: "Not a member of this league" };
     }
 
-    // Everyone plays the same grid: without this check, a stranger's prediction could be targeted
+    // Without this check, a player from another league could be targeted
     const isTargetMember = league.members.some((member) => member.user?.equals(targetUserId));
 
     if (!isTargetMember) {

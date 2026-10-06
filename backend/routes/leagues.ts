@@ -8,7 +8,7 @@ import League from "../models/leagues";
 import Prediction from "../models/predictions";
 import User from "../models/users";
 import { checkBody } from "../modules/checkBody";
-import { getWeek } from "../modules/getWeek";
+import { getSeason, getWeek } from "../modules/getWeek";
 import { isInGrid } from "../modules/gridTypes";
 import { buildRanking } from "../modules/ranking";
 import { getSeasonPoints, getWeekPoints } from "../modules/leaguePoints";
@@ -108,7 +108,7 @@ router.get("/user/:token", (req, res) => {
         League.find({ "members.user": user._id }).then((leagues) => {
             // This week's grid (read only: it is created when a player opens it), with each event's sport and
             // competition: a league only counts the matches of its grid type
-            Grid.findOne({ season: new Date().getFullYear(), week: getWeek(new Date()) })
+            Grid.findOne({ season: getSeason(new Date()), week: getWeek(new Date()) })
                 .populate<{ events: InstanceType<typeof Event>[] }>("events", "sport competition")
                 .then((grid) => {
                 Promise.all([
@@ -156,7 +156,7 @@ router.get("/:leagueId/ranking/:token", (req, res) => {
 
     // The week to rank: this week by default, or an older one with ?season=…&week=… (Semaine tab only)
     const now = new Date();
-    const thisSeason = now.getFullYear();
+    const thisSeason = getSeason(now);
     const thisWeek = getWeek(now);
     const season = (scope === "week" && Number(req.query.season)) || thisSeason;
     const week = (scope === "week" && Number(req.query.week)) || thisWeek;

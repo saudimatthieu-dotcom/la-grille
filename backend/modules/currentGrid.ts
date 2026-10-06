@@ -1,6 +1,6 @@
 import Event from "../models/events";
 import Grid from "../models/grids";
-import { getWeek } from "./getWeek";
+import { getSeason, getWeek } from "./getWeek";
 
 type EventDoc = InstanceType<typeof Event>;
 
@@ -15,7 +15,7 @@ function getWeekBounds(date: Date) {
 // Gives back null when there is no match this week.
 export function getCurrentGrid() {
   const now = new Date();
-  const season = now.getFullYear();
+  const season = getSeason(now);
   const week = getWeek(now);
   const { start, end } = getWeekBounds(now);
 

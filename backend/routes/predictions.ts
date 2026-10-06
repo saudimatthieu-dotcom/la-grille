@@ -6,7 +6,7 @@ import Grid from "../models/grids";
 import Prediction from "../models/predictions";
 import User from "../models/users";
 import { checkBody } from "../modules/checkBody";
-import { getWeek } from "../modules/getWeek";
+import { getSeason, getWeek } from "../modules/getWeek";
 import { buildRanking } from "../modules/ranking";
 import { findTactics, getSeasonPoints, getWeekPoints, tacticsOf } from "../modules/leaguePoints";
 import { isInGrid } from "../modules/gridTypes";
@@ -137,7 +137,7 @@ router.get("/results/:gridId/:token", (req, res) => {
       // An old week (opened from the Semaine tab's arrows) or this one
       const season = grid.season ?? 0;
       const week = grid.week ?? 0;
-      const isThisWeek = season === new Date().getFullYear() && week === getWeek(new Date());
+      const isThisWeek = season === getSeason(new Date()) && week === getWeek(new Date());
 
       Prediction.find({ user: user._id, grid: grid._id, league: league._id }).then((predictions) => {
         Promise.all([

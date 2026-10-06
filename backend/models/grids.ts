@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-// One grid per week for everyone: the leagues only rank the same predictions
+// One grid per week: every match of the week. Each league plays the part that fits its type (see gridTypes.ts)
 const gridSchema = new mongoose.Schema({
   season: Number,
   week: Number,

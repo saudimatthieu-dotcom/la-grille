@@ -19,7 +19,7 @@ type Props = {
   leagueName?: string;
 };
 
-// This week's grid — every match of the week, the same for every player, with or without a league
+// This week's grid, as one league plays it: the matches of its type and my predictions there (none: the public league)
 export default function WeekGrid({ leagueId, leagueName }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const token = useSelector((state: RootState) => state.user.value.token);

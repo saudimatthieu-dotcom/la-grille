@@ -5,7 +5,7 @@ import Grid from "../models/grids";
 import League from "../models/leagues";
 import Prediction from "../models/predictions";
 import Tactic from "../models/tactics";
-import { getWeek } from "./getWeek";
+import { getSeason, getWeek } from "./getWeek";
 import { BONUS_KINDS, pointsInLeague } from "./scoring";
 import type { Bonus, BonusKind } from "./scoring";
 
@@ -49,7 +49,7 @@ export function tacticsOf(tactics: TacticDoc[], predictionId?: mongoose.Types.Ob
 }
 
 // Points of every member on one week's grid (this week by default), as they count in this league — { userId: points }
-export function getWeekPoints(league: LeagueDoc, season = new Date().getFullYear(), week = getWeek(new Date())) {
+export function getWeekPoints(league: LeagueDoc, season = getSeason(new Date()), week = getWeek(new Date())) {
   return Grid.findOne({ season, week }).then((grid) => {
     if (!grid) {
       return {} as Record<string, number>;
