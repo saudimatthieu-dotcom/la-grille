@@ -8,7 +8,7 @@ import type { RootState, RootStackParamList } from "../App";
 import { colors } from "../config/theme";
 import Countdown from "../components/Countdown";
 import BonusBar from "../components/BonusBar";
-import type { PredictionPayload } from "../types";
+import type { BonusKind, PredictionPayload } from "../types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "PodiumPrediction">;
 
@@ -38,6 +38,8 @@ export default function PodiumPredictionScreen({ navigation, route }: Props) {
   const participants = event.participants ?? [];
 
   const [picks, setPicks] = useState<string[]>(initialPicks(payload));
+  // Chosen before validating: saved with the prediction
+  const [bonus, setBonus] = useState<BonusKind | null>(prediction?.bonus ?? null);
   const [error, setError] = useState("");
 
   // Tap a name: add it to the next free slot, or remove it if already picked
@@ -63,7 +65,7 @@ export default function PodiumPredictionScreen({ navigation, route }: Props) {
     fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/predictions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, gridId, eventId: event._id, leagueId, payload }),
+      body: JSON.stringify({ token, gridId, eventId: event._id, leagueId, payload, bonus }),
     })
       .then((response) => response.json())
       .then((data) => {
@@ -118,7 +120,14 @@ export default function PodiumPredictionScreen({ navigation, route }: Props) {
 
       {participantRows}
 
-      <BonusBar sport={event.sport} predictionId={prediction?._id} />
+      <BonusBar
+        sport={event.sport}
+        gridId={gridId}
+        leagueId={leagueId}
+        predictionId={prediction?._id}
+        value={bonus}
+        onChange={setBonus}
+      />
 
       {error !== "" && <Text style={styles.error}>{error}</Text>}
 

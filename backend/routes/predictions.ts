@@ -11,11 +11,13 @@ import { buildRanking } from "../modules/ranking";
 import { findTactics, getSeasonPoints, getWeekPoints, tacticsOf } from "../modules/leaguePoints";
 import { isInGrid } from "../modules/gridTypes";
 import { findPlayerLeague } from "../modules/publicLeague";
-import { pointsInLeague } from "../modules/scoring";
+import { BONUS_KINDS, pointsInLeague } from "../modules/scoring";
+import type { BonusKind } from "../modules/scoring";
+import { bonusError, bonusStock, findWeekBonuses, saveBonus } from "../modules/bonus";
 
 const router = express.Router();
 
-// POST /predictions — create or update my prediction for one event, in one league
+// POST /predictions — create or update my prediction for one event, in one league, with its bonus
 // (no leagueId: the public league — the Grille tab)
 router.post("/", (req, res) => {
   if (!checkBody(req.body, ["token", "gridId", "eventId", "payload"])) {
@@ -24,6 +26,13 @@ router.post("/", (req, res) => {
   }
 
   const leagueId = req.body.leagueId;
+  // undefined: the bonus isn't touched — null: no bonus on this prediction
+  const bonus: BonusKind | null | undefined = req.body.bonus;
+
+  if (bonus && !BONUS_KINDS.includes(bonus)) {
+    res.json({ result: false, error: "Invalid bonus" });
+    return;
+  }
 
   if (
     !mongoose.isValidObjectId(req.body.gridId) ||
@@ -62,16 +71,57 @@ router.post("/", (req, res) => {
       }
 
       // { user, event, league }: my prediction on this match in THIS league — my other leagues keep theirs
-      Prediction.findOneAndUpdate(
-        { user: user._id, event: event._id, league: league._id },
-        { grid: req.body.gridId, payload: req.body.payload },
-        { upsert: true, returnDocument: "after" }
-      )
-        .then((prediction) => {
-          res.json({ result: true, prediction });
-        })
-        // Without this, a database refusal (e.g. a unique index) leaves the app waiting with no answer
-        .catch(() => res.json({ result: false, error: "Could not save the prediction" }));
+      const filter = { user: user._id, event: event._id, league: league._id };
+
+      const savePrediction = () =>
+        Prediction.findOneAndUpdate(
+          filter,
+          { grid: req.body.gridId, payload: req.body.payload },
+          { upsert: true, returnDocument: "after" }
+        );
+
+      // No bonus to save (an older app, or the public league with none chosen): just the prediction
+      if (bonus === undefined || (league.isPublic && !bonus)) {
+        savePrediction()
+          .then((prediction) => {
+            res.json({ result: true, prediction });
+          })
+          // Without this, a database refusal (e.g. a unique index) leaves the app waiting with no answer
+          .catch(() => res.json({ result: false, error: "Could not save the prediction" }));
+        return;
+      }
+
+      // The bonus is checked BEFORE anything is saved: a refused bonus doesn't leave a prediction saved without it
+      Promise.all([Grid.findById(req.body.gridId), Prediction.findOne(filter)]).then(([grid, existing]) => {
+        if (!grid) {
+          res.json({ result: false, error: "Grid not found" });
+          return;
+        }
+
+        findWeekBonuses(user._id, league._id, grid.season, grid.week).then((tactics) => {
+          const error = bonus ? bonusError(bonus, league.isPublic, event.sport ?? "", bonusStock(tactics, existing?._id)) : null;
+
+          if (error) {
+            res.json({ result: false, error });
+            return;
+          }
+
+          savePrediction()
+            .then((prediction) => {
+              if (!prediction) {
+                res.json({ result: false, error: "Could not save the prediction" });
+                return;
+              }
+
+              const kind = bonus ?? null;
+
+              return saveBonus({ user, league, grid, event, predictionId: prediction._id, tactics, kind }).then(() => {
+                res.json({ result: true, prediction: { ...prediction.toObject(), bonus: kind } });
+              });
+            })
+            .catch(() => res.json({ result: false, error: "Could not save the prediction" }));
+        });
+      });
     });
   });
 });
@@ -98,7 +148,18 @@ router.get("/grid/:gridId/:token", (req, res) => {
       }
 
       Prediction.find({ user: user._id, grid: req.params.gridId, league: league._id }).then((predictions) => {
-        res.json({ result: true, predictions });
+        findTactics(
+          league._id,
+          predictions.map((prediction) => prediction._id)
+        ).then((tactics) => {
+          // Each prediction with the bonus I put on it here (null: none) — the grid shows its icon
+          const withBonus = predictions.map((prediction) => {
+            const { bonus } = tacticsOf(tactics, prediction._id);
+            return { ...prediction.toObject(), bonus: BONUS_KINDS.find((kind) => bonus[kind]) ?? null };
+          });
+
+          res.json({ result: true, predictions: withBonus });
+        });
       });
     });
   });

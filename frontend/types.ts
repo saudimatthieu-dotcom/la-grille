@@ -45,6 +45,8 @@ export type Prediction = {
   payload: PredictionPayload;
   // Raw points, without any bonus — the bonuses count per league
   points: number | null;
+  // The bonus I put on it in its league (null: none)
+  bonus: BonusKind | null;
 };
 
 // The 3 tabs of a league screen

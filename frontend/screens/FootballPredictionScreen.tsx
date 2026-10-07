@@ -9,6 +9,7 @@ import { colors } from "../config/theme";
 import Countdown from "../components/Countdown";
 import BonusBar from "../components/BonusBar";
 import TeamLogo from "../components/TeamLogo";
+import type { BonusKind } from "../types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "FootballPrediction">;
 
@@ -29,6 +30,8 @@ export default function FootballPredictionScreen({ navigation, route }: Props) {
   const [awayScore, setAwayScore] = useState(
     payload?.awayScore !== undefined ? String(payload.awayScore) : ""
   );
+  // Chosen before validating: saved with the prediction
+  const [bonus, setBonus] = useState<BonusKind | null>(prediction?.bonus ?? null);
   const [error, setError] = useState("");
 
   const handleSubmit = () => {
@@ -49,6 +52,8 @@ export default function FootballPredictionScreen({ navigation, route }: Props) {
         // The league this prediction is for (none: the public league)
         leagueId,
         payload: { homeScore: Number(homeScore), awayScore: Number(awayScore) },
+        // The bonus goes with it (null: none) — checked before anything is saved
+        bonus,
       }),
     })
       .then((response) => response.json())
@@ -105,7 +110,14 @@ export default function FootballPredictionScreen({ navigation, route }: Props) {
         </View>
       </View>
 
-      <BonusBar sport={event.sport} predictionId={prediction?._id} />
+      <BonusBar
+        sport={event.sport}
+        gridId={gridId}
+        leagueId={leagueId}
+        predictionId={prediction?._id}
+        value={bonus}
+        onChange={setBonus}
+      />
 
       {error !== "" && <Text style={styles.error}>{error}</Text>}
 

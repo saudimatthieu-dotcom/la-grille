@@ -4,7 +4,6 @@ import mongoose from "mongoose";
 import Event from "../models/events";
 import Grid from "../models/grids";
 import League from "../models/leagues";
-import Message from "../models/messages";
 import Prediction from "../models/predictions";
 import Tactic from "../models/tactics";
 import User from "../models/users";
@@ -12,208 +11,54 @@ import { checkBody } from "../modules/checkBody";
 import { getSeason, getWeek } from "../modules/getWeek";
 import { findSabotages } from "../modules/leaguePoints";
 import { buildRanking } from "../modules/ranking";
-import { BONUS_KINDS, BONUS_PER_WEEK, isBonusAllowed } from "../modules/scoring";
-import type { BonusKind } from "../modules/scoring";
+import { bonusStock, findWeekBonuses } from "../modules/bonus";
+import { findPlayerLeague } from "../modules/publicLeague";
 
 const router = express.Router();
 
-type LeagueDoc = InstanceType<typeof League>;
-type TacticDoc = InstanceType<typeof Tactic>;
+// GET /tactics/bonus/:gridId/:token?leagueId=&predictionId= — what's left of my week's bonuses in this league (BonusBar)
+// The bonus already on predictionId is counted as available: saving the prediction again gives it back first
+router.get("/bonus/:gridId/:token", (req, res) => {
+  const { leagueId, predictionId } = req.query;
 
-// What loadBonusContext finds — or an error. Written out because TypeScript can't guess it through 3 nested .then()
-type BonusContext =
-  | { error: string }
-  | {
-      user: InstanceType<typeof User>;
-      prediction: InstanceType<typeof Prediction>;
-      event: InstanceType<typeof Event>;
-      grid: InstanceType<typeof Grid>;
-      league: LeagueDoc;
-      tactics: TacticDoc[];
-    };
+  if (
+    !mongoose.isValidObjectId(req.params.gridId) ||
+    (leagueId && !mongoose.isValidObjectId(leagueId)) ||
+    (predictionId && !mongoose.isValidObjectId(predictionId))
+  ) {
+    res.json({ result: false, error: "Invalid id" });
+    return;
+  }
 
-// Finds what a bonus needs: me, my prediction, its match, its week, its league, and my bonuses there that week
-function loadBonusContext(token: string, predictionId: string) {
-  return User.findOne({ token }).then<BonusContext>((user) => {
+  User.findOne({ token: req.params.token }).then((user) => {
     if (!user) {
-      return { error: "User not found" };
-    }
-
-    return Prediction.findById(predictionId).then<BonusContext>((prediction) => {
-      // Same message for "doesn't exist" and "not yours": gives nothing away
-      if (!prediction || !prediction.user?.equals(user._id)) {
-        return { error: "Prediction not found" };
-      }
-
-      // A prediction belongs to one league: a bonus on it counts there
-      return Promise.all([
-        Event.findById(prediction.event),
-        Grid.findById(prediction.grid),
-        League.findById(prediction.league),
-      ]).then<BonusContext>(([event, grid, league]) => {
-        if (!event || !grid || !league) {
-          return { error: "Prediction not found" };
-        }
-
-        // My bonuses of the prediction's week in its league: the stock is counted from them
-        return Tactic.find({
-          actor: user._id,
-          league: league._id,
-          season: grid.season,
-          week: grid.week,
-          kind: { $in: BONUS_KINDS },
-        }).then((tactics) => ({ user, prediction, event, grid, league, tactics }));
-      });
-    });
-  });
-}
-
-// What the BonusBar shows: my bonus on this prediction, and what's left of my week's bonuses in its league
-function bonusStateOf(league: LeagueDoc, tactics: TacticDoc[], predictionId: mongoose.Types.ObjectId) {
-  const tacticsHere = tactics.filter((tactic) => tactic.league?.equals(league._id));
-  const active = tacticsHere.find((tactic) => tactic.prediction?.equals(predictionId));
-
-  // No stored stock: 1 per week minus what I already used this week — so nothing piles up from one week to the next
-  const stock = { doubleur: 0, assurance: 0, bouclier: 0 };
-  BONUS_KINDS.forEach((kind) => {
-    stock[kind] = BONUS_PER_WEEK - tacticsHere.filter((tactic) => tactic.kind === kind).length;
-  });
-
-  return {
-    leagueId: league._id,
-    leagueName: league.name,
-    active: (active?.kind as BonusKind | undefined) ?? null,
-    stock,
-  };
-}
-
-// GET /tactics/bonus/:predictionId/:token — my bonus on this prediction and my stock in its league (BonusBar)
-router.get("/bonus/:predictionId/:token", (req, res) => {
-  if (!mongoose.isValidObjectId(req.params.predictionId)) {
-    res.json({ result: false, error: "Invalid id" });
-    return;
-  }
-
-  loadBonusContext(req.params.token, req.params.predictionId).then((context) => {
-    if ("error" in context) {
-      res.json({ result: false, error: context.error });
+      res.json({ result: false, error: "User not found" });
       return;
     }
 
-    // The public league plays without bonuses: null tells the BonusBar to say so
-    const { league, tactics, prediction } = context;
-
-    res.json({ result: true, league: league.isPublic ? null : bonusStateOf(league, tactics, prediction._id) });
-  });
-});
-
-// POST /tactics/bonus — puts a doubleur, assurance or bouclier on one prediction (in its league), or takes it off
-router.post("/bonus", (req, res) => {
-  if (!checkBody(req.body, ["token", "predictionId", "kind"])) {
-    res.json({ result: false, error: "Missing or empty fields" });
-    return;
-  }
-
-  if (!BONUS_KINDS.includes(req.body.kind)) {
-    res.json({ result: false, error: "Invalid bonus" });
-    return;
-  }
-
-  if (!mongoose.isValidObjectId(req.body.predictionId)) {
-    res.json({ result: false, error: "Invalid id" });
-    return;
-  }
-
-  const kind: BonusKind = req.body.kind;
-
-  loadBonusContext(req.body.token, req.body.predictionId).then((context) => {
-    if ("error" in context) {
-      res.json({ result: false, error: context.error });
-      return;
-    }
-
-    const { user, prediction, event, grid, league, tactics } = context;
-
-    if (league.isPublic) {
-      res.json({ result: false, error: "No bonus in the public league" });
-      return;
-    }
-
-    if (!event.lockAt || event.lockAt <= new Date()) {
-      res.json({ result: false, error: "Predictions are closed for this event" });
-      return;
-    }
-
-    if (!isBonusAllowed(kind, event.sport)) {
-      res.json({ result: false, error: "No assurance in F1 and cycling" });
-      return;
-    }
-
-    // My bonus already on this prediction, if any
-    const current = tactics.find((tactic) => tactic.prediction?.equals(prediction._id));
-
-    // The same bonus again: taken off — it goes back to this week's stock
-    if (current && current.kind === kind) {
-      Tactic.deleteOne({ _id: current._id }).then(() => {
-        const remaining = tactics.filter((tactic) => !tactic._id.equals(current._id));
-        res.json({ result: true, league: bonusStateOf(league, remaining, prediction._id) });
-      });
-      return;
-    }
-
-    // Bonuses don't stack: one per prediction
-    if (current) {
-      res.json({ result: false, error: "Only one bonus per prediction" });
-      return;
-    }
-
-    if (bonusStateOf(league, tactics, prediction._id).stock[kind] <= 0) {
-      res.json({ result: false, error: "No bonus left this week" });
-      return;
-    }
-
-    const newTactic = new Tactic({
-      league: league._id,
-      season: grid.season,
-      week: grid.week,
-      actor: user._id,
-      kind,
-      prediction: prediction._id,
-    });
-
-    newTactic.save().then((savedTactic) => {
-      res.json({ result: true, league: bonusStateOf(league, [...tactics, savedTactic], prediction._id) });
-
-      // Coin Chambrage: a doubleur or a bouclier is announced in this league's chat (the assurance stays secret)
-      if (kind === "assurance") {
+    Promise.all([Grid.findById(req.params.gridId), findPlayerLeague(leagueId, user._id)]).then(([grid, league]) => {
+      if (!grid) {
+        res.json({ result: false, error: "Grid not found" });
         return;
       }
 
-      // Announced once per prediction in this league: turning it off and on again doesn't spam the chat
-      Message.findOne({ league: league._id, type: "system", "meta.kind": kind, "meta.prediction": prediction._id }).then(
-        (announced) => {
-          if (announced) {
-            return;
-          }
+      if (!league) {
+        res.json({ result: false, error: "Not a member of this league" });
+        return;
+      }
 
-          const title = event.homeTeam?.name ? `${event.homeTeam.name}-${event.awayTeam?.name}` : event.competition;
+      // The public league plays without bonuses: null tells the BonusBar to say so
+      if (league.isPublic) {
+        res.json({ result: true, league: null });
+        return;
+      }
 
-          // The bouclier doesn't say which match: the saboteur has to guess
-          const text =
-            kind === "doubleur"
-              ? `⚡ ${user.username} a utilisé un Doubleur sur ${title} !`
-              : `🛡️ ${user.username} vient de placer un Bouclier.`;
-
-          const newMessage = new Message({
-            league: league._id,
-            type: "system",
-            text,
-            meta: { kind, prediction: prediction._id },
-          });
-
-          newMessage.save();
-        }
-      );
+      findWeekBonuses(user._id, league._id, grid.season, grid.week).then((tactics) => {
+        res.json({
+          result: true,
+          league: { leagueId: league._id, leagueName: league.name, stock: bonusStock(tactics, predictionId) },
+        });
+      });
     });
   });
 });

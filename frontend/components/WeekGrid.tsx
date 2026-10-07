@@ -8,6 +8,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { RootState, RootStackParamList } from "../App";
 import { colors } from "../config/theme";
 import { SPORT_ICONS } from "../config/sports";
+import { BONUSES } from "../config/bonuses";
 import Countdown from "./Countdown";
 import ProgressBar from "./ProgressBar";
 import type { Prediction, SportEvent } from "../types";
@@ -79,7 +80,8 @@ export default function WeekGrid({ leagueId, leagueName }: Props) {
     const prediction = predictions.find((item) => item.event === event._id);
     const isFinished = event.status === "finished";
     const isLocked = !isFinished && new Date(event.lockAt).getTime() <= now;
-
+    // The bonus I played on this match here, if any: its icon sits next to the status
+    const bonusIcon = BONUSES.find((item) => item.kind === prediction?.bonus)?.icon;
 
     let status = (
       <Ionicons
@@ -132,6 +134,7 @@ export default function WeekGrid({ leagueId, leagueName }: Props) {
             <Text style={styles.rowInfo}>{event.competition}</Text>
           </View>
         </View>
+        {bonusIcon && <Ionicons name={bonusIcon} size={18} color={colors.accent} />}
         {status}
       </TouchableOpacity>
     );
