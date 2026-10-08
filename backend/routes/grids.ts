@@ -3,13 +3,14 @@ import mongoose from "mongoose";
 
 import User from "../models/users";
 import { getCurrentGrid } from "../modules/currentGrid";
-import { isInGrid } from "../modules/gridTypes";
 import { findPlayerLeague } from "../modules/publicLeague";
+import { leagueEvents } from "../modules/selections";
+import { isVip } from "../modules/vip";
 
 const router = express.Router();
 
 // GET /grids/current/:token?leagueId= — this week's grid, as one league plays it (none: the public league)
-// The grid holds every match of the week: each league only sees the ones of its type (officielle, classique, exotique)
+// The grid holds every match of the week: each league only sees the ones picked for it, or else the ones of its type
 router.get("/current/:token", (req, res) => {
   const leagueId = req.query.leagueId;
 
@@ -30,19 +31,23 @@ router.get("/current/:token", (req, res) => {
         return;
       }
 
+      // The VIP owner of a sur-mesure league picks its matches: the grid shows them the button (even when empty)
+      const canPick = league.gridType === "surmesure" && Boolean(league.owner?.equals(user._id)) && isVip(user);
+
       if (!grid) {
-        res.json({ result: false, error: "No upcoming events" });
+        res.json({ result: false, error: "No upcoming events", canPick });
         return;
       }
 
-      const events = grid.events.filter((event) => isInGrid(league.gridType, event));
+      // The matches picked by hand for this league's grid this week, or else the ones of its type
+      leagueEvents(league, grid).then((events) => {
+        if (events.length === 0) {
+          res.json({ result: false, error: "No match for this grid this week", canPick });
+          return;
+        }
 
-      if (events.length === 0) {
-        res.json({ result: false, error: "No match for this grid this week" });
-        return;
-      }
-
-      res.json({ result: true, grid: { ...grid.toObject(), events } });
+        res.json({ result: true, grid: { ...grid.toObject(), events }, canPick });
+      });
     });
   });
 });

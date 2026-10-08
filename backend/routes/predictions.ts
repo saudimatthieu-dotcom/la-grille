@@ -9,7 +9,8 @@ import { checkBody } from "../modules/checkBody";
 import { getSeason, getWeek } from "../modules/getWeek";
 import { buildRanking } from "../modules/ranking";
 import { findTactics, getSeasonPoints, getWeekPoints, tacticsOf } from "../modules/leaguePoints";
-import { isInGrid } from "../modules/gridTypes";
+import { isPlayed } from "../modules/gridTypes";
+import { findPicked } from "../modules/selections";
 import { findPlayerLeague } from "../modules/publicLeague";
 import { BONUS_KINDS, pointsInLeague } from "../modules/scoring";
 import type { BonusKind } from "../modules/scoring";
@@ -49,7 +50,11 @@ router.post("/", (req, res) => {
       return;
     }
 
-    Promise.all([Event.findById(req.body.eventId), findPlayerLeague(leagueId, user._id)]).then(([event, league]) => {
+    Promise.all([
+      Event.findById(req.body.eventId),
+      findPlayerLeague(leagueId, user._id),
+      Grid.findById(req.body.gridId),
+    ]).then(([event, league, grid]) => {
       if (!event) {
         res.json({ result: false, error: "Event not found" });
         return;
@@ -60,67 +65,72 @@ router.post("/", (req, res) => {
         return;
       }
 
-      if (!isInGrid(league.gridType, event)) {
-        res.json({ result: false, error: "This match isn't in this league's grid" });
+      if (!grid) {
+        res.json({ result: false, error: "Grid not found" });
         return;
       }
 
-      if (!event.lockAt || event.lockAt <= new Date()) {
-        res.json({ result: false, error: "Predictions are closed for this event" });
-        return;
-      }
-
-      // { user, event, league }: my prediction on this match in THIS league — my other leagues keep theirs
-      const filter = { user: user._id, event: event._id, league: league._id };
-
-      const savePrediction = () =>
-        Prediction.findOneAndUpdate(
-          filter,
-          { grid: req.body.gridId, payload: req.body.payload },
-          { upsert: true, returnDocument: "after" }
-        );
-
-      // No bonus to save (an older app, or the public league with none chosen): just the prediction
-      if (bonus === undefined || (league.isPublic && !bonus)) {
-        savePrediction()
-          .then((prediction) => {
-            res.json({ result: true, prediction });
-          })
-          // Without this, a database refusal (e.g. a unique index) leaves the app waiting with no answer
-          .catch(() => res.json({ result: false, error: "Could not save the prediction" }));
-        return;
-      }
-
-      // The bonus is checked BEFORE anything is saved: a refused bonus doesn't leave a prediction saved without it
-      Promise.all([Grid.findById(req.body.gridId), Prediction.findOne(filter)]).then(([grid, existing]) => {
-        if (!grid) {
-          res.json({ result: false, error: "Grid not found" });
+      // The matches picked by hand for this league that week (admins, or the sur-mesure owner) — null: automatic
+      findPicked(league, grid.season, grid.week).then((picked) => {
+        if (!isPlayed(league.gridType, event, picked)) {
+          res.json({ result: false, error: "This match isn't in this league's grid" });
           return;
         }
 
-        findWeekBonuses(user._id, league._id, grid.season, grid.week).then((tactics) => {
-          const error = bonus ? bonusError(bonus, league.isPublic, event.sport ?? "", bonusStock(tactics, existing?._id)) : null;
+        if (!event.lockAt || event.lockAt <= new Date()) {
+          res.json({ result: false, error: "Predictions are closed for this event" });
+          return;
+        }
 
-          if (error) {
-            res.json({ result: false, error });
-            return;
-          }
+        // { user, event, league }: my prediction on this match in THIS league — my other leagues keep theirs
+        const filter = { user: user._id, event: event._id, league: league._id };
 
+        const savePrediction = () =>
+          Prediction.findOneAndUpdate(
+            filter,
+            { grid: grid._id, payload: req.body.payload },
+            { upsert: true, returnDocument: "after" }
+          );
+
+        // No bonus to save (an older app, or the public league with none chosen): just the prediction
+        if (bonus === undefined || (league.isPublic && !bonus)) {
           savePrediction()
             .then((prediction) => {
-              if (!prediction) {
-                res.json({ result: false, error: "Could not save the prediction" });
-                return;
-              }
-
-              const kind = bonus ?? null;
-
-              return saveBonus({ user, league, grid, event, predictionId: prediction._id, tactics, kind }).then(() => {
-                res.json({ result: true, prediction: { ...prediction.toObject(), bonus: kind } });
-              });
+              res.json({ result: true, prediction });
             })
+            // Without this, a database refusal (e.g. a unique index) leaves the app waiting with no answer
             .catch(() => res.json({ result: false, error: "Could not save the prediction" }));
-        });
+          return;
+        }
+
+        // The bonus is checked BEFORE anything is saved: a refused bonus doesn't leave a prediction saved without it
+        Promise.all([Prediction.findOne(filter), findWeekBonuses(user._id, league._id, grid.season, grid.week)]).then(
+          ([existing, tactics]) => {
+            const error = bonus
+              ? bonusError(bonus, league.isPublic, event.sport ?? "", bonusStock(tactics, existing?._id))
+              : null;
+
+            if (error) {
+              res.json({ result: false, error });
+              return;
+            }
+
+            savePrediction()
+              .then((prediction) => {
+                if (!prediction) {
+                  res.json({ result: false, error: "Could not save the prediction" });
+                  return;
+                }
+
+                const kind = bonus ?? null;
+
+                return saveBonus({ user, league, grid, event, predictionId: prediction._id, tactics, kind }).then(() => {
+                  res.json({ result: true, prediction: { ...prediction.toObject(), bonus: kind } });
+                });
+              })
+              .catch(() => res.json({ result: false, error: "Could not save the prediction" }));
+          }
+        );
       });
     });
   });
@@ -208,10 +218,11 @@ router.get("/results/:gridId/:token", (req, res) => {
           ),
           getWeekPoints(league, season, week),
           User.find({ _id: { $in: league.members.map((member) => member.user) } }),
-        ]).then(([tactics, weekPoints, users]) => {
+          findPicked(league, season, week),
+        ]).then(([tactics, weekPoints, users, picked]) => {
           // Each finished match of this league's grid, with what I predicted there and what it gave me
           const results = grid.events
-            .filter((event) => event.status === "finished" && isInGrid(league.gridType, event))
+            .filter((event) => event.status === "finished" && isPlayed(league.gridType, event, picked))
             .map((event) => {
               const prediction = predictions.find((item) => item.event?.equals(event._id));
               const { bonus, sabotage } = tacticsOf(tactics, prediction?._id);

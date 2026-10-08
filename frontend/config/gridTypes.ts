@@ -23,7 +23,7 @@ export const GRID_TYPES = [
   {
     value: "surmesure",
     label: "Sur-mesure",
-    description: "Choisis tes 10 événements",
+    description: "Tu choisis les matchs chaque semaine",
     icon: "lock-closed-outline",
     premium: true,
   },

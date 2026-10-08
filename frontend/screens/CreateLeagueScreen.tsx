@@ -7,11 +7,16 @@ import { Ionicons } from "@expo/vector-icons";
 import type { RootState, RootStackParamList } from "../App";
 import { colors } from "../config/theme";
 import { GRID_TYPES } from "../config/gridTypes";
+import { FREE_LEAGUE_MAX_MEMBERS } from "../config/vip";
+import { useMe } from "../utils/useMe";
 
 type Props = NativeStackScreenProps<RootStackParamList, "CreateLeague">;
 
 export default function CreateLeagueScreen({ navigation }: Props) {
   const token = useSelector((state: RootState) => state.user.value.token);
+  // VIP: the sur-mesure grid and leagues with no player limit
+  const me = useMe();
+  const isVip = Boolean(me?.isVip);
 
   const [name, setName] = useState("");
   const [gridType, setGridType] = useState("officielle");
@@ -58,18 +63,19 @@ export default function CreateLeagueScreen({ navigation }: Props) {
 
   const gridTypeOptions = GRID_TYPES.map((type) => {
     const isSelected = gridType === type.value;
+    // A VIP option for a player who isn't VIP: tapping it shows the pass instead
+    const isLocked = type.premium && !isVip;
 
     return (
       <TouchableOpacity
         key={type.value}
-        style={[styles.option, isSelected && styles.optionSelected, type.premium && styles.optionLocked]}
-        onPress={() => setGridType(type.value)}
-        disabled={type.premium}
+        style={[styles.option, isSelected && styles.optionSelected, isLocked && styles.optionLocked]}
+        onPress={() => (isLocked ? navigation.navigate("Vip") : setGridType(type.value))}
       >
         <Ionicons
-          name={type.icon}
+          name={type.premium && isVip ? "options-outline" : type.icon}
           size={26}
-          color={isSelected ? colors.accent : type.premium ? colors.muted : colors.text}
+          color={isSelected ? colors.accent : isLocked ? colors.muted : colors.text}
         />
 
         <View style={styles.optionBody}>
@@ -77,8 +83,8 @@ export default function CreateLeagueScreen({ navigation }: Props) {
           <Text style={styles.optionDescription}>{type.description}</Text>
         </View>
 
-        {type.premium ? (
-          <Text style={styles.premium}>Premium</Text>
+        {isLocked ? (
+          <Text style={styles.premium}>VIP</Text>
         ) : (
           <Ionicons
             name={isSelected ? "checkmark-circle" : "ellipse-outline"}
@@ -128,6 +134,12 @@ export default function CreateLeagueScreen({ navigation }: Props) {
 
       <Text style={styles.label}>Choisis ton type de grille</Text>
       {gridTypeOptions}
+
+      <Text style={styles.hint}>
+        {isVip
+          ? "👑 VIP : ta ligue n'a pas de limite de joueurs."
+          : `Jusqu'à ${FREE_LEAGUE_MAX_MEMBERS} joueurs par ligue (illimité avec le Pass VIP).`}
+      </Text>
 
       {error !== "" && <Text style={styles.error}>{error}</Text>}
 
@@ -204,8 +216,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 2,
   },
+  hint: {
+    color: colors.muted,
+    fontSize: 13,
+    marginTop: 4,
+  },
   premium: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.gold,
     color: colors.bg,
     fontSize: 11,
     fontWeight: "800",

@@ -60,3 +60,16 @@ export type ChatMessage = {
   user: { _id: string; username: string; avatar?: string | null } | null;
   createdAt: string;
 };
+
+// My profile as GET /users/me sends it — the VIP and admin status are read from the server, not kept in Redux
+export type Me = {
+  username: string;
+  email: string;
+  avatar: string | null;
+  isAdmin: boolean;
+  isVip: boolean;
+  vipUntil: string | null;
+};
+
+// One match of the picks screen (GET /picks)
+export type PickEvent = SportEvent & { isLocked: boolean };

@@ -31,3 +31,17 @@ export function isInGrid(gridType: string | null | undefined, event: GridEvent) 
 
   return true;
 }
+
+// The grid types whose matches admins pick (sur-mesure leagues pick their own)
+export const ADMIN_GRID_TYPES = ["officielle", "classique", "exotique"] as const;
+export type AdminGridType = (typeof ADMIN_GRID_TYPES)[number];
+
+// Is this match played by a league? The matches picked by hand when there are some, else the automatic rule.
+// picked = ids of the week's selection (null or empty: nothing picked)
+export function isPlayed(gridType: string | null | undefined, event: GridEvent & { _id: unknown }, picked: string[] | null) {
+  if (picked && picked.length > 0) {
+    return picked.includes(String(event._id));
+  }
+
+  return isInGrid(gridType, event);
+}

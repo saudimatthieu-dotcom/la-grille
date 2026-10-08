@@ -11,6 +11,7 @@ import { colors } from "../config/theme";
 import { AVATARS } from "../config/avatars";
 import Avatar from "../components/Avatar";
 import { login, logout } from "../reducers/user";
+import { useMe } from "../utils/useMe";
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<TabParamList, "Profil">,
@@ -20,6 +21,8 @@ type Props = CompositeScreenProps<
 export default function ProfileScreen({ navigation }: Props) {
   const dispatch = useDispatch();
   const user = useSelector((state: RootState) => state.user.value);
+  // The VIP and admin status, from the server
+  const me = useMe();
 
   const [username, setUsername] = useState(user.username ?? "");
   const [message, setMessage] = useState("");
@@ -100,8 +103,20 @@ export default function ProfileScreen({ navigation }: Props) {
 
       <TouchableOpacity style={styles.statsButton} onPress={() => navigation.navigate("Stats")}>
         <Ionicons name="stats-chart" size={20} color={colors.bg} />
-        <Text style={styles.statsText}>MES STATS</Text>
+        <Text style={styles.statsText}>MES STATS{me && !me.isVip ? " · VIP" : ""}</Text>
       </TouchableOpacity>
+
+      <TouchableOpacity style={styles.vipButton} onPress={() => navigation.navigate("Vip")}>
+        <Text style={styles.vipText}>{me?.isVip ? "👑 TU ES VIP" : "👑 PASS VIP"}</Text>
+      </TouchableOpacity>
+
+      {/* Only the admin accounts see it: the grids' matches and the VIP pass */}
+      {me?.isAdmin && (
+        <TouchableOpacity style={styles.adminButton} onPress={() => navigation.navigate("Admin")}>
+          <Ionicons name="construct-outline" size={20} color={colors.accent} />
+          <Text style={styles.adminText}>ADMINISTRATION</Text>
+        </TouchableOpacity>
+      )}
 
       {/* No stock to show any more: the bonuses are per league and per week, the BonusBar shows them */}
       <Text style={styles.section}>Mes bonus</Text>
@@ -232,6 +247,35 @@ const styles = StyleSheet.create({
   },
   statsText: {
     color: colors.bg,
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  vipButton: {
+    alignItems: "center",
+    borderColor: colors.gold,
+    borderWidth: 1.5,
+    borderRadius: 14,
+    paddingVertical: 14,
+    marginBottom: 8,
+  },
+  vipText: {
+    color: colors.gold,
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  adminButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderColor: colors.accent,
+    borderWidth: 1.5,
+    borderRadius: 14,
+    paddingVertical: 14,
+    marginBottom: 8,
+  },
+  adminText: {
+    color: colors.accent,
     fontSize: 16,
     fontWeight: "800",
   },

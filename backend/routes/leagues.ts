@@ -9,7 +9,8 @@ import Prediction from "../models/predictions";
 import User from "../models/users";
 import { checkBody } from "../modules/checkBody";
 import { getSeason, getWeek } from "../modules/getWeek";
-import { isInGrid } from "../modules/gridTypes";
+import { leagueEvents } from "../modules/selections";
+import { FREE_LEAGUE_MAX_MEMBERS, isVip } from "../modules/vip";
 import { buildRanking } from "../modules/ranking";
 import { getSeasonPoints, getWeekPoints } from "../modules/leaguePoints";
 
@@ -45,6 +46,12 @@ router.post("/", (req, res) => {
     User.findOne({ token: req.body.token }).then((user) => {
         if (!user) {
             res.json({ result: false, error: "User not found" });
+            return;
+        }
+
+        // Sur-mesure: the owner picks the matches every week — a VIP feature
+        if (req.body.gridType === "surmesure" && !isVip(user)) {
+            res.json({ result: false, error: "The sur-mesure grid is for VIP members" });
             return;
         }
 
@@ -88,10 +95,21 @@ router.post("/join", (req, res) => {
                 return;
             }
 
-            league.members.push({ user: user._id });
+            // Full: a private league whose owner isn't VIP stops at FREE_LEAGUE_MAX_MEMBERS players
+            User.findById(league.owner).then((owner) => {
+                const isFull =
+                    !league.isPublic && league.members.length >= FREE_LEAGUE_MAX_MEMBERS && !(owner && isVip(owner));
 
-            league.save().then((updatedLeague) => {
-                res.json({ result: true, league: updatedLeague });
+                if (isFull) {
+                    res.json({ result: false, error: "This league is full" });
+                    return;
+                }
+
+                league.members.push({ user: user._id });
+
+                league.save().then((updatedLeague) => {
+                    res.json({ result: true, league: updatedLeague });
+                });
             });
         });
     });
@@ -121,7 +139,9 @@ router.get("/user/:token", (req, res) => {
                         )
                     ),
                     Promise.all(leagues.map((league) => getWeekPoints(league))),
-                ]).then(([filledByLeague, weekPointsByLeague]) => {
+                    // The matches each league plays this week: picked by hand, or the ones of its type
+                    Promise.all(leagues.map((league) => (grid ? leagueEvents(league, grid) : Promise.resolve(null)))),
+                ]).then(([filledByLeague, weekPointsByLeague, eventsByLeague]) => {
                     // Adds my rank, my points and my progress to each league (home screen + Mes Ligues)
                     const myLeagues = leagues.map((league, index) => {
                         const me = league.members.find((member) => member.user?.equals(user._id));
@@ -134,7 +154,7 @@ router.get("/user/:token", (req, res) => {
                             myRank,
                             myWeekPoints: weekPointsByLeague[index][String(user._id)] ?? 0,
                             filled: filledByLeague[index],
-                            total: grid ? grid.events.filter((event) => isInGrid(league.gridType, event)).length : null,
+                            total: eventsByLeague[index]?.length ?? null,
                         };
                     });
 

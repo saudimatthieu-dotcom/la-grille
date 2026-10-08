@@ -33,6 +33,8 @@ export default function StatsScreen({ navigation }: Props) {
 
   const [stats, setStats] = useState<Stats | null>(null);
   const [error, setError] = useState("");
+  // The stats are part of the VIP pass: the server says so instead of sending them
+  const [isVipOnly, setIsVipOnly] = useState(false);
 
   useEffect(() => {
     fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/users/me/stats/${token}`)
@@ -40,6 +42,8 @@ export default function StatsScreen({ navigation }: Props) {
       .then((data) => {
         if (data.result) {
           setStats(data.stats);
+        } else if (data.vipOnly) {
+          setIsVipOnly(true);
         } else {
           setError(data.error);
         }
@@ -94,6 +98,18 @@ export default function StatsScreen({ navigation }: Props) {
       </View>
 
       {error !== "" && <Text style={styles.error}>{error}</Text>}
+
+      {isVipOnly && (
+        <View style={styles.vipBox}>
+          <Text style={styles.vipTitle}>👑 Réservé aux VIP</Text>
+          <Text style={styles.vipText}>
+            Ton % de pronos justes, tes sports forts et tes bonus bien placés sont dans le Pass VIP.
+          </Text>
+          <TouchableOpacity style={styles.vipButton} onPress={() => navigation.navigate("Vip")}>
+            <Text style={styles.vipButtonText}>DÉCOUVRIR LE PASS VIP</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {stats && stats.total === 0 && (
         <Text style={styles.empty}>Pas encore de stats : elles arrivent dès que tes premiers matchs sont terminés.</Text>
@@ -155,6 +171,37 @@ const styles = StyleSheet.create({
     color: colors.danger,
     fontSize: 14,
     marginBottom: 12,
+  },
+  vipBox: {
+    backgroundColor: colors.card,
+    borderColor: colors.gold,
+    borderWidth: 1.5,
+    borderRadius: 16,
+    padding: 20,
+    alignItems: "center",
+    gap: 10,
+  },
+  vipTitle: {
+    color: colors.gold,
+    fontSize: 20,
+    fontWeight: "900",
+  },
+  vipText: {
+    color: colors.muted,
+    fontSize: 14,
+    textAlign: "center",
+  },
+  vipButton: {
+    backgroundColor: colors.gold,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    marginTop: 6,
+  },
+  vipButtonText: {
+    color: colors.bg,
+    fontSize: 14,
+    fontWeight: "900",
   },
   empty: {
     color: colors.muted,

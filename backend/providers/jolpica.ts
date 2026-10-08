@@ -22,31 +22,27 @@ function getRaces(path: string) {
     .then((data) => data.MRData.RaceTable.Races);
 }
 
-// The next Grand Prix, with the drivers of the last race as participants
-export function fetchNextRace() {
-  return Promise.all([getRaces("current/next/"), getRaces("current/last/results/")]).then(
-    ([nextRaces, lastRaces]) => {
-      const race = nextRaces[0];
+// Every Grand Prix from now to "until", with the drivers of the last race as participants
+export function fetchRacesUntil(until: Date) {
+  return Promise.all([getRaces("current/"), getRaces("current/last/results/")]).then(([races, lastRaces]) => {
+    const now = new Date();
+    const drivers = lastRaces[0]?.Results ?? [];
 
-      if (!race) {
-        return null;
-      }
-
-      // No start time published yet → midnight UTC, so predictions close early rather than late
-      const startsAt = new Date(`${race.date}T${race.time ?? "00:00:00Z"}`);
-      const drivers = lastRaces[0]?.Results ?? [];
-
-      return {
-        sport: "f1",
-        provider: "jolpica",
-        externalId: `${race.season}-${race.round}`,
-        competition: race.raceName,
-        participants: drivers.map((result) => ({ name: result.Driver.familyName })),
-        startsAt,
-        lockAt: startsAt,
-      };
-    }
-  );
+    return (
+      races
+        .map((race) => ({
+          sport: "f1",
+          provider: "jolpica",
+          externalId: `${race.season}-${race.round}`,
+          competition: race.raceName,
+          participants: drivers.map((result) => ({ name: result.Driver.familyName })),
+          // No start time published yet → midnight UTC, so predictions close early rather than late
+          startsAt: new Date(`${race.date}T${race.time ?? "00:00:00Z"}`),
+          lockAt: new Date(`${race.date}T${race.time ?? "00:00:00Z"}`),
+        }))
+        .filter((race) => race.startsAt >= now && race.startsAt <= until)
+    );
+  });
 }
 
 // The real podium of a race, or null if it hasn't been run yet

@@ -31,6 +31,8 @@ export default function WeekGrid({ leagueId, leagueName }: Props) {
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   // Taken when the grid loads (not on every render): decides which matches are still open
   const [now, setNow] = useState(0);
+  // Sur-mesure league and I'm its VIP owner: I pick its matches
+  const [canPick, setCanPick] = useState(false);
 
   const isFocused = useIsFocused();
 
@@ -46,6 +48,8 @@ export default function WeekGrid({ leagueId, leagueName }: Props) {
     fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/grids/current/${token}${query}`)
       .then((response) => response.json())
       .then((data) => {
+        setCanPick(Boolean(data.canPick));
+
         if (!data.result) {
           setError(data.error);
           return;
@@ -150,6 +154,16 @@ export default function WeekGrid({ leagueId, leagueName }: Props) {
         <ProgressBar value={predictions.length} max={events.length} />
       </View>
 
+      {canPick && leagueId && (
+        <TouchableOpacity
+          style={styles.pickButton}
+          onPress={() => navigation.navigate("Picks", { leagueId, leagueName })}
+        >
+          <Ionicons name="options-outline" size={18} color={colors.gold} />
+          <Text style={styles.pickButtonText}>CHOISIR LES MATCHS</Text>
+        </TouchableOpacity>
+      )}
+
       {nextLock && <Countdown lockAt={nextLock} />}
 
       {hasResults && (
@@ -197,6 +211,22 @@ const styles = StyleSheet.create({
   resultsButtonText: {
     color: colors.bg,
     fontSize: 15,
+    fontWeight: "900",
+  },
+  pickButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderColor: colors.gold,
+    borderWidth: 1.5,
+    borderRadius: 14,
+    paddingVertical: 12,
+    marginBottom: 16,
+  },
+  pickButtonText: {
+    color: colors.gold,
+    fontSize: 14,
     fontWeight: "900",
   },
   error: {

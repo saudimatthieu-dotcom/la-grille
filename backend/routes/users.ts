@@ -14,6 +14,7 @@ import { BONUS_KINDS } from "../modules/scoring";
 import type { BonusKind } from "../modules/scoring";
 import { sendResetCode } from "../modules/sendResetCode";
 import { computeStats } from "../modules/stats";
+import { isVip } from "../modules/vip";
 
 const RESET_CODE_MINUTES = 15;
 const RESET_MAX_ATTEMPTS = 5;
@@ -177,16 +178,26 @@ router.get("/me/:token", (req, res) => {
         username: data.username,
         email: data.email,
         avatar: data.avatar,
+        // Read on every visit (not kept in Redux): an admin can change them at any time
+        isAdmin: data.isAdmin,
+        isVip: isVip(data),
+        vipUntil: data.vipUntil,
       },
     });
   });
 });
 
-// GET /users/me/stats/:token — my stats: % of correct predictions, per sport, and the bonuses that paid off
+// GET /users/me/stats/:token — my stats: % of correct predictions, per sport, and the bonuses that paid off (VIP)
 router.get("/me/stats/:token", (req, res) => {
   User.findOne({ token: req.params.token }).then((user) => {
     if (!user) {
       res.json({ result: false, error: "User not found" });
+      return;
+    }
+
+    // vipOnly: the app then shows the VIP pass instead of an error
+    if (!isVip(user)) {
+      res.json({ result: false, error: "The stats are for VIP members", vipOnly: true });
       return;
     }
 

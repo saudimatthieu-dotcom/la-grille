@@ -1,4 +1,4 @@
-import { isInGrid } from "./gridTypes";
+import { isInGrid, isPlayed } from "./gridTypes";
 
 const ligue1 = { sport: "football", competition: "Ligue 1" };
 const top14 = { sport: "rugby", competition: "Top 14" };
@@ -43,5 +43,24 @@ describe("isInGrid", () => {
   it("plays every match for an unknown type", () => {
     expect(isInGrid(undefined, f1)).toBe(true);
     expect(isInGrid("surmesure", ligue1)).toBe(true);
+  });
+});
+
+describe("isPlayed", () => {
+  const psg = { _id: "e1", sport: "football", competition: "Ligue 1" };
+  const gp = { _id: "e2", sport: "f1", competition: "Formula 1" };
+
+  it("follows the grid type when nothing is picked", () => {
+    expect(isPlayed("classique", psg, null)).toBe(true);
+    expect(isPlayed("classique", gp, [])).toBe(false);
+  });
+
+  it("only plays the picked matches when there are some", () => {
+    expect(isPlayed("classique", psg, ["e2"])).toBe(false);
+    expect(isPlayed("officielle", gp, ["e2"])).toBe(true);
+  });
+
+  it("plays every match of a sur-mesure league until its owner picks", () => {
+    expect(isPlayed("surmesure", gp, null)).toBe(true);
   });
 });

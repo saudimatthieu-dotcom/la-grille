@@ -5,7 +5,7 @@ import Message from "../models/messages";
 import Prediction from "../models/predictions";
 import User from "../models/users";
 import { getWeekStart } from "./getWeek";
-import { isInGrid } from "./gridTypes";
+import { leagueEvents } from "./selections";
 import { getWeekPoints } from "./leaguePoints";
 import { buildRanking } from "./ranking";
 
@@ -46,28 +46,31 @@ export function postWeeklyRecaps() {
         // The leagues where someone predicted this week — the public league has no chat
         Prediction.distinct("league", { grid: grid._id }).then((leagueIds) =>
           League.find({ _id: { $in: leagueIds }, isPublic: { $ne: true } }).then((leagues) => {
-            const messages = leagues
-              // A league whose type had no match this week has nothing to sum up
-              .filter((league) => grid.events.some((event) => isInGrid(league.gridType, event)))
-              .map((league) =>
-                Promise.all([
-                  getWeekPoints(league, grid.season ?? 0, grid.week ?? 0),
-                  User.find({ _id: { $in: league.members.map((member) => member.user) } }),
-                ]).then(([weekPoints, users]) => {
-                  const members = users.map((user) => ({ userId: String(user._id), username: user.username }));
-                  const ranking = buildRanking(members, weekPoints);
+            const messages = leagues.map((league) =>
+              Promise.all([
+                leagueEvents(league, grid),
+                getWeekPoints(league, grid.season ?? 0, grid.week ?? 0),
+                User.find({ _id: { $in: league.members.map((member) => member.user) } }),
+              ]).then(([events, weekPoints, users]) => {
+                // A league that had no match this week (none of its type, none picked) has nothing to sum up
+                if (events.length === 0) {
+                  return null;
+                }
 
-                  return {
-                    league: league._id,
-                    type: "system",
-                    text: formatRecap(grid.week ?? 0, ranking),
-                    meta: { kind: "recap", season: grid.season, week: grid.week },
-                  };
-                })
-              );
+                const members = users.map((user) => ({ userId: String(user._id), username: user.username }));
+                const ranking = buildRanking(members, weekPoints);
+
+                return {
+                  league: league._id,
+                  type: "system",
+                  text: formatRecap(grid.week ?? 0, ranking),
+                  meta: { kind: "recap", season: grid.season, week: grid.week },
+                };
+              })
+            );
 
             return Promise.all(messages)
-              .then((recapMessages) => Message.insertMany(recapMessages))
+              .then((recapMessages) => Message.insertMany(recapMessages.filter((message) => message !== null)))
               .then(() => Grid.updateOne({ _id: grid._id }, { status: "scored" }));
           })
         )

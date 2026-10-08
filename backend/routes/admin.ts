@@ -1,4 +1,5 @@
 import express from "express";
+import mongoose from "mongoose";
 
 import Event from "../models/events";
 import League from "../models/leagues";
@@ -6,14 +7,16 @@ import Message from "../models/messages";
 import Prediction from "../models/predictions";
 import Tactic from "../models/tactics";
 import User from "../models/users";
+import { checkBody } from "../modules/checkBody";
 import { tacticsOf } from "../modules/leaguePoints";
 import { getPublicLeague } from "../modules/publicLeague";
 import { pointsInLeague, scorePrediction } from "../modules/scoring";
 import { postWeeklyRecaps } from "../modules/weeklyRecap";
+import { extendVip, isVip } from "../modules/vip";
 import type { Result } from "../modules/scoring";
-import { THESPORTSDB_COMPETITIONS } from "../config/competitions";
-import { fetchUpcomingEvents, fetchEventResult } from "../providers/thesportsdb";
-import { fetchNextRace, fetchRacePodium } from "../providers/jolpica";
+import { fetchEventResult } from "../providers/thesportsdb";
+import { fetchRacePodium } from "../providers/jolpica";
+import { IMPORT_DAYS, importUpcomingEvents } from "../modules/importEvents";
 
 const router = express.Router();
 
@@ -22,33 +25,29 @@ function isAdmin(secret: unknown) {
   return Boolean(process.env.ADMIN_SECRET) && secret === process.env.ADMIN_SECRET;
 }
 
-// POST /admin/sync-events — imports the upcoming events from the sports APIs
+// POST /admin/sync-events — imports the matches of the coming month from the sports APIs (cron-job.org)
 router.post("/sync-events", (req, res) => {
   if (!isAdmin(req.body.secret)) {
     res.json({ result: false, error: "Forbidden" });
     return;
   }
 
-  const requests = [
-    ...THESPORTSDB_COMPETITIONS.map((competition) => fetchUpcomingEvents(competition)),
-    fetchNextRace().then((race) => (race ? [race] : [])),
-  ];
+  sendImport(res);
+});
 
-  Promise.all(requests)
-    .then((lists) => {
-      const events = lists.flat();
+// Answers with the number of matches imported — takes 1 to 2 minutes
+function sendImport(res: express.Response) {
+  importUpcomingEvents()
+    .then((imported) => {
+      if (imported === null) {
+        res.json({ result: false, error: "An import is already running" });
+        return;
+      }
 
-      // upsert on { provider, externalId }: a new match is created, a known one is updated (e.g. rescheduled)
-      const saves = events.map((event) =>
-        Event.updateOne({ provider: event.provider, externalId: event.externalId }, event, { upsert: true })
-      );
-
-      return Promise.all(saves).then(() => {
-        res.json({ result: true, imported: events.length });
-      });
+      res.json({ result: true, imported, days: IMPORT_DAYS });
     })
     .catch(() => res.json({ result: false, error: "Sports API unavailable" }));
-});
+}
 
 // POST /admin/sync-results — fetches the final result of every event that has started
 router.post("/sync-results", (req, res) => {
@@ -176,6 +175,125 @@ router.post("/score", (req, res) => {
         });
       });
     });
+  });
+});
+
+// POST /admin/make-admin — turns an account into an admin account (or back, with isAdmin: false).
+// Called once by hand with the secret: the admins then do the rest from the app
+router.post("/make-admin", (req, res) => {
+  if (!isAdmin(req.body.secret)) {
+    res.json({ result: false, error: "Forbidden" });
+    return;
+  }
+
+  if (!checkBody(req.body, ["email"])) {
+    res.json({ result: false, error: "Missing or empty fields" });
+    return;
+  }
+
+  const makeAdmin = req.body.isAdmin !== false;
+
+  User.findOneAndUpdate(
+    { email: String(req.body.email).trim() },
+    { isAdmin: makeAdmin },
+    { returnDocument: "after" }
+  ).then((user) => {
+    if (!user) {
+      res.json({ result: false, error: "User not found" });
+      return;
+    }
+
+    res.json({ result: true, username: user.username, isAdmin: user.isAdmin });
+  });
+});
+
+// The admin account behind a token — null when the token isn't an admin's
+function findAdminUser(token: unknown) {
+  return User.findOne({ token: String(token), isAdmin: true });
+}
+
+// What the admin screen shows about a player
+function vipInfo(user: InstanceType<typeof User>) {
+  return {
+    _id: user._id,
+    username: user.username,
+    email: user.email,
+    isVip: isVip(user),
+    vipUntil: user.vipUntil,
+  };
+}
+
+// GET /admin/users/:token?search= — the players whose username or email contains the search (admin screen)
+router.get("/users/:token", (req, res) => {
+  findAdminUser(req.params.token).then((admin) => {
+    if (!admin) {
+      res.json({ result: false, error: "Forbidden" });
+      return;
+    }
+
+    const search = String(req.query.search ?? "").trim();
+
+    if (search.length < 2) {
+      res.json({ result: true, users: [] });
+      return;
+    }
+
+    // Escaped: a "." or a "+" typed in the search box is a plain character, not a regex rule
+    const pattern = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+
+    User.find({ $or: [{ username: pattern }, { email: pattern }] })
+      .sort({ username: 1 })
+      .limit(20)
+      .then((users) => {
+        res.json({ result: true, users: users.map(vipInfo) });
+      });
+  });
+});
+
+// PUT /admin/vip — gives a player some months of VIP pass (added to what's left), or takes it away (months: 0)
+router.put("/vip", (req, res) => {
+  if (!checkBody(req.body, ["token", "userId"])) {
+    res.json({ result: false, error: "Missing or empty fields" });
+    return;
+  }
+
+  const months = Number(req.body.months);
+
+  if (!mongoose.isValidObjectId(req.body.userId) || !Number.isInteger(months) || months < 0 || months > 24) {
+    res.json({ result: false, error: "Invalid id or months" });
+    return;
+  }
+
+  findAdminUser(req.body.token).then((admin) => {
+    if (!admin) {
+      res.json({ result: false, error: "Forbidden" });
+      return;
+    }
+
+    User.findById(req.body.userId).then((user) => {
+      if (!user) {
+        res.json({ result: false, error: "User not found" });
+        return;
+      }
+
+      user.vipUntil = months === 0 ? null : extendVip(user.vipUntil, months);
+
+      user.save().then((savedUser) => {
+        res.json({ result: true, user: vipInfo(savedUser) });
+      });
+    });
+  });
+});
+
+// POST /admin/import — the admin screen's button: same import as /admin/sync-events, with an admin's token
+router.post("/import", (req, res) => {
+  findAdminUser(req.body.token).then((admin) => {
+    if (!admin) {
+      res.json({ result: false, error: "Forbidden" });
+      return;
+    }
+
+    sendImport(res);
   });
 });
 

@@ -22,6 +22,9 @@ import ResultScreen from "./screens/ResultScreen";
 import GridsScreen from "./screens/GridsScreen";
 import ProfileScreen from "./screens/ProfileScreen";
 import StatsScreen from "./screens/StatsScreen";
+import VipScreen from "./screens/VipScreen";
+import AdminScreen from "./screens/AdminScreen";
+import PicksScreen from "./screens/PicksScreen";
 import type { LeagueTab, Prediction, SportEvent } from "./types";
 
 import { Provider, useSelector } from "react-redux";
@@ -60,6 +63,10 @@ export type RootStackParamList = {
   // Without a league: the general grid's results (no league rank)
   Result: { gridId: string; leagueId?: string; leagueName?: string };
   Stats: undefined;
+  Vip: undefined;
+  Admin: undefined;
+  // With a league: its VIP owner picks its matches (sur-mesure) — without: an admin picks the grid types' matches
+  Picks: { leagueId?: string; leagueName?: string };
 };
 
 export type TabParamList = {
@@ -129,6 +136,9 @@ function RootNavigator() {
       <Stack.Screen name="Sabotage" component={SabotageScreen} />
       <Stack.Screen name="Result" component={ResultScreen} />
       <Stack.Screen name="Stats" component={StatsScreen} />
+      <Stack.Screen name="Vip" component={VipScreen} />
+      <Stack.Screen name="Admin" component={AdminScreen} />
+      <Stack.Screen name="Picks" component={PicksScreen} />
     </Stack.Navigator>
   );
 }
