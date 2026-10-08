@@ -7,7 +7,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { RootState, RootStackParamList } from "../App";
 import { colors } from "../config/theme";
 import { GRID_TYPES } from "../config/gridTypes";
-import { FREE_LEAGUE_MAX_MEMBERS } from "../config/vip";
+import { DEFAULT_SEASON_WEEKS, FREE_LEAGUE_MAX_MEMBERS, MAX_SEASON_WEEKS, MIN_SEASON_WEEKS } from "../config/vip";
 import { useMe } from "../utils/useMe";
 
 type Props = NativeStackScreenProps<RootStackParamList, "CreateLeague">;
@@ -22,6 +22,8 @@ export default function CreateLeagueScreen({ navigation }: Props) {
   const [gridType, setGridType] = useState("officielle");
   const [error, setError] = useState("");
   const [code, setCode] = useState("");
+  // Season length in weeks: only a VIP creator changes it (the server gives 10 to the others)
+  const [seasonWeeks, setSeasonWeeks] = useState(String(DEFAULT_SEASON_WEEKS));
 
   const handleCreate = () => {
     setError("");
@@ -29,7 +31,7 @@ export default function CreateLeagueScreen({ navigation }: Props) {
     fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/leagues`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, name, gridType }),
+      body: JSON.stringify({ token, name, gridType, seasonWeeks: isVip ? Number(seasonWeeks) : undefined }),
     })
       .then((response) => response.json())
       .then((data) => {
@@ -135,6 +137,26 @@ export default function CreateLeagueScreen({ navigation }: Props) {
       <Text style={styles.label}>Choisis ton type de grille</Text>
       {gridTypeOptions}
 
+      <Text style={styles.label}>Durée d&apos;une saison</Text>
+      {isVip ? (
+        <View style={styles.weeksRow}>
+          <TextInput
+            style={styles.weeksInput}
+            value={seasonWeeks}
+            onChangeText={(text) => setSeasonWeeks(text.replace(/[^0-9]/g, ""))}
+            keyboardType="number-pad"
+            maxLength={2}
+          />
+          <Text style={styles.weeksText}>
+            semaines 👑 (de {MIN_SEASON_WEEKS} à {MAX_SEASON_WEEKS})
+          </Text>
+        </View>
+      ) : (
+        <Text style={styles.hint}>
+          {DEFAULT_SEASON_WEEKS} semaines, puis le classement repart à 0 (durée au choix avec le Pass VIP).
+        </Text>
+      )}
+
       <Text style={styles.hint}>
         {isVip
           ? "👑 VIP : ta ligue n'a pas de limite de joueurs."
@@ -215,6 +237,28 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 12,
     marginTop: 2,
+  },
+  weeksRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 4,
+  },
+  weeksInput: {
+    width: 64,
+    backgroundColor: colors.card,
+    borderColor: colors.border,
+    borderWidth: 1,
+    color: colors.text,
+    borderRadius: 12,
+    paddingVertical: 12,
+    fontSize: 18,
+    fontWeight: "800",
+    textAlign: "center",
+  },
+  weeksText: {
+    color: colors.text,
+    fontSize: 14,
   },
   hint: {
     color: colors.muted,

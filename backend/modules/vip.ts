@@ -1,5 +1,6 @@
-// The VIP pass (client's list): sur-mesure grid (choose your matches), Stats screen, leagues with no player limit.
-// No ads to remove yet, and the season length isn't configurable yet.
+// The VIP pass (client's list): sur-mesure grid (choose your matches), Stats screen, leagues with no player limit,
+// the season length of their leagues (4 to 30 weeks, see seasons.ts).
+// No ads to remove yet.
 
 // A league whose owner isn't VIP stops at this many players
 export const FREE_LEAGUE_MAX_MEMBERS = 10;

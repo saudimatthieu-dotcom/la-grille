@@ -13,6 +13,7 @@ import { findSabotages } from "../modules/leaguePoints";
 import { buildRanking } from "../modules/ranking";
 import { bonusStock, findWeekBonuses } from "../modules/bonus";
 import { findPlayerLeague } from "../modules/publicLeague";
+import { seasonState } from "../modules/seasons";
 
 const router = express.Router();
 
@@ -76,6 +77,10 @@ function checkSaboteur(leagueId: string, userId: mongoose.Types.ObjectId, target
     // Before the lanterne rouge check: the last of the public league must not read "only the lanterne rouge…"
     if (league.isPublic) {
       return { error: "No sabotage in the public league" };
+    }
+
+    if (seasonState(league) !== "running") {
+      return { error: "The season is over" };
     }
 
     const isMember = league.members.some((member) => member.user?.equals(userId));

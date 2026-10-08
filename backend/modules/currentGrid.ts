@@ -1,12 +1,12 @@
 import Event from "../models/events";
 import Grid from "../models/grids";
-import { getSeason, getWeek } from "./getWeek";
+import { getMonday, getSeason, getWeek } from "./getWeek";
 
 type EventDoc = InstanceType<typeof Event>;
 
 // Monday 00:00 of this week → Monday 00:00 of next week
 function getWeekBounds(date: Date) {
-  const start = new Date(date.getFullYear(), date.getMonth(), date.getDate() - ((date.getDay() + 6) % 7));
+  const start = getMonday(date);
   const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7);
   return { start, end };
 }

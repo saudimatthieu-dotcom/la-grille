@@ -12,6 +12,8 @@ import { tacticsOf } from "../modules/leaguePoints";
 import { getPublicLeague } from "../modules/publicLeague";
 import { pointsInLeague, scorePrediction } from "../modules/scoring";
 import { postWeeklyRecaps } from "../modules/weeklyRecap";
+import { finishSeasons } from "../modules/seasons";
+import { awardMonthlyPrize } from "../modules/monthlyPrize";
 import { extendVip, isVip } from "../modules/vip";
 import type { Result } from "../modules/scoring";
 import { fetchEventResult } from "../providers/thesportsdb";
@@ -166,10 +168,11 @@ router.post("/score", (req, res) => {
             });
 
             Promise.all([Message.insertMany(messages), ...tacticSaves])
-              // Last: a finished week gets its recap in each league's chat (only once, see weeklyRecap.ts)
-              .then(() => postWeeklyRecaps())
-              .then((recaps) => {
-                res.json({ result: true, scored: predictions.length, recaps });
+              // Then: a finished week gets its recap in each league's chat (only once, see weeklyRecap.ts),
+              // finished seasons close (seasons.ts) and last month's #1 of the public league wins (monthlyPrize.ts)
+              .then(() => Promise.all([postWeeklyRecaps(), finishSeasons(), awardMonthlyPrize()]))
+              .then(([recaps, seasonsClosed, monthlyWinners]) => {
+                res.json({ result: true, scored: predictions.length, recaps, seasonsClosed, monthlyWinners });
               });
           });
         });

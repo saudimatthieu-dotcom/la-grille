@@ -9,13 +9,23 @@ import type { RootState, RootStackParamList } from "../App";
 import { colors } from "../config/theme";
 import Avatar from "./Avatar";
 import { formatWeek } from "../utils/format";
+import type { MonthlyWinners, PastSeason } from "../types";
 
 type Props = {
   leagueId: string;
   leagueName: string;
 };
 
-type Scope = "week" | "season";
+// "month": the public league only (its monthly prize) — "season": its general ranking, which never resets
+type Scope = "week" | "month" | "season";
+
+const MEDALS = ["🥇", "🥈", "🥉"];
+
+// "octobre 2026" for "2026-10"
+function monthName(key: string) {
+  const [year, month] = key.split("-").map(Number);
+  return new Date(year, month - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+}
 
 type WeekRef = { season: number; week: number };
 
@@ -50,6 +60,9 @@ export default function LeagueRanking({ leagueId, leagueName }: Props) {
   const [weekInfo, setWeekInfo] = useState<WeekInfo | null>(null);
   const [ranking, setRanking] = useState<RankingRow[]>([]);
   const [isPublic, setIsPublic] = useState(false);
+  // The palmarès: past seasons' podiums (private league), or each month's winners (public league)
+  const [pastSeasons, setPastSeasons] = useState<PastSeason[]>([]);
+  const [monthlyWinners, setMonthlyWinners] = useState<MonthlyWinners[]>([]);
   const [error, setError] = useState("");
 
   // Runs again every time the Semaine / Saison toggle or the week changes
@@ -63,6 +76,8 @@ export default function LeagueRanking({ leagueId, leagueName }: Props) {
           setRanking(data.ranking);
           setWeekInfo(data);
           setIsPublic(data.isPublic);
+          setPastSeasons(data.pastSeasons ?? []);
+          setMonthlyWinners(data.monthlyWinners ?? []);
         } else {
           setError(data.error);
         }
@@ -73,6 +88,51 @@ export default function LeagueRanking({ leagueId, leagueName }: Props) {
   // The sabotage belongs to the lanterne rouge of the season ranking — never in the public league
   const amLastPlace =
     !isPublic && scope === "season" && ranking.some((row) => row.username === username && row.isLastPlace);
+
+  // The public league: Semaine / Mois (the monthly prize) / Général — a private league: Semaine / Saison
+  const scopes: { value: Scope; label: string }[] = isPublic
+    ? [
+        { value: "week", label: "Semaine" },
+        { value: "month", label: "Mois" },
+        { value: "season", label: "Général" },
+      ]
+    : [
+        { value: "week", label: "Semaine" },
+        { value: "season", label: "Saison" },
+      ];
+
+  const toggleButtons = scopes.map((item) => (
+    <TouchableOpacity
+      key={item.value}
+      style={[styles.toggleButton, scope === item.value && styles.toggleSelected]}
+      onPress={() => setScope(item.value)}
+    >
+      <Text style={[styles.toggleText, scope === item.value && styles.toggleTextSelected]}>{item.label}</Text>
+    </TouchableOpacity>
+  ));
+
+  // Newest first
+  const seasonRows = [...pastSeasons].reverse().map((past) => (
+    <View key={past.number} style={styles.palmaresRow}>
+      <Text style={styles.palmaresTitle}>Saison {past.number}</Text>
+      <Text style={styles.palmaresText}>
+        {past.podium.length > 0
+          ? past.podium.map((row) => `${MEDALS[row.rank - 1] ?? ""} ${row.username} ${row.points} pts`).join("   ")
+          : "Personne n'a marqué de points"}
+      </Text>
+    </View>
+  ));
+
+  const monthRows = [...monthlyWinners].reverse().map((entry) => (
+    <View key={entry.month} style={styles.palmaresRow}>
+      <Text style={styles.palmaresTitle}>{monthName(entry.month)}</Text>
+      <Text style={styles.palmaresText}>
+        {entry.winners.length > 0
+          ? entry.winners.map((winner) => `👑 ${winner.username} ${winner.points} pts`).join("   ")
+          : "Pas de gagnant"}
+      </Text>
+    </View>
+  ));
 
   const rows = ranking.map((row) => {
     const isMe = row.username === username;
@@ -95,7 +155,7 @@ export default function LeagueRanking({ leagueId, leagueName }: Props) {
 
         <View style={styles.pointsBox}>
           <Text style={styles.points}>{row.points} pts</Text>
-          {scope === "season" && row.weekPoints > 0 && <Text style={styles.delta}>+{row.weekPoints}</Text>}
+          {scope !== "week" && row.weekPoints > 0 && <Text style={styles.delta}>+{row.weekPoints}</Text>}
         </View>
 
         {amLastPlace && !isMe && (
@@ -114,20 +174,7 @@ export default function LeagueRanking({ leagueId, leagueName }: Props) {
 
   return (
     <View>
-      <View style={styles.toggle}>
-        <TouchableOpacity
-          style={[styles.toggleButton, scope === "week" && styles.toggleSelected]}
-          onPress={() => setScope("week")}
-        >
-          <Text style={[styles.toggleText, scope === "week" && styles.toggleTextSelected]}>Semaine</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.toggleButton, scope === "season" && styles.toggleSelected]}
-          onPress={() => setScope("season")}
-        >
-          <Text style={[styles.toggleText, scope === "season" && styles.toggleTextSelected]}>Saison</Text>
-        </TouchableOpacity>
-      </View>
+      <View style={styles.toggle}>{toggleButtons}</View>
 
       {/* ◀ 28 sept. – 4 oct. ▶ : go back to the past weeks */}
       {scope === "week" && weekInfo && (
@@ -160,7 +207,28 @@ export default function LeagueRanking({ leagueId, leagueName }: Props) {
         </Text>
       )}
 
+      {/* The month's #1 wins a month of VIP: said above the month ranking */}
+      {scope === "month" && (
+        <Text style={styles.prizeHint}>
+          👑 Le n°1 du mois gagne 1 mois de Pass VIP (en cas d&apos;égalité, tous les premiers).
+        </Text>
+      )}
+
       {rows}
+
+      {/* Palmarès: under the season ranking (private), under the month ranking (public) */}
+      {!isPublic && scope === "season" && seasonRows.length > 0 && (
+        <>
+          <Text style={styles.palmares}>Palmarès</Text>
+          {seasonRows}
+        </>
+      )}
+      {isPublic && scope === "month" && monthRows.length > 0 && (
+        <>
+          <Text style={styles.palmares}>Gagnants des mois passés</Text>
+          {monthRows}
+        </>
+      )}
 
       {/* My grid of the week shown above: my predictions, the real results and my points */}
       {scope === "week" && weekInfo?.gridId && (
@@ -182,6 +250,39 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 4,
     marginBottom: 20,
+  },
+  prizeHint: {
+    color: colors.gold,
+    fontSize: 13,
+    fontWeight: "700",
+    marginBottom: 12,
+  },
+  palmares: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    marginTop: 24,
+    marginBottom: 10,
+  },
+  palmaresRow: {
+    backgroundColor: colors.card,
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 8,
+    gap: 4,
+  },
+  palmaresTitle: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: "900",
+    textTransform: "capitalize",
+  },
+  palmaresText: {
+    color: colors.muted,
+    fontSize: 14,
   },
   toggleButton: {
     flex: 1,

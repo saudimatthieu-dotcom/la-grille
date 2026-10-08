@@ -6,6 +6,7 @@ import { getCurrentGrid } from "../modules/currentGrid";
 import { findPlayerLeague } from "../modules/publicLeague";
 import { leagueEvents } from "../modules/selections";
 import { isVip } from "../modules/vip";
+import { seasonState } from "../modules/seasons";
 
 const router = express.Router();
 
@@ -33,6 +34,8 @@ router.get("/current/:token", (req, res) => {
 
       // The VIP owner of a sur-mesure league picks its matches: the grid shows them the button (even when empty)
       const canPick = league.gridType === "surmesure" && Boolean(league.owner?.equals(user._id)) && isVip(user);
+      // Season over: the grid shows its matches, but they can't be predicted until the next season starts
+      const seasonOver = seasonState(league) === "ending" || seasonState(league) === "finished";
 
       if (!grid) {
         res.json({ result: false, error: "No upcoming events", canPick });
@@ -46,7 +49,7 @@ router.get("/current/:token", (req, res) => {
           return;
         }
 
-        res.json({ result: true, grid: { ...grid.toObject(), events }, canPick });
+        res.json({ result: true, grid: { ...grid.toObject(), events }, canPick, seasonOver });
       });
     });
   });

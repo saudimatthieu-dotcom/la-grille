@@ -73,3 +73,23 @@ export type Me = {
 
 // One match of the picks screen (GET /picks)
 export type PickEvent = SportEvent & { isLocked: boolean };
+
+// One line of a past season's podium (ties share a rank)
+export type PodiumRow = { user: string; username: string; points: number; rank: number };
+
+// A private league's season, as GET /leagues/:id/season sends it
+export type SeasonInfo = {
+  number: number;
+  weeks: number;
+  weekIndex: number;
+  endsAt: string | null;
+  // running: predictions open — ending: last matches being scored — finished: waiting for the creator
+  state: "running" | "ending" | "finished";
+  isOwner: boolean;
+  canChooseLength: boolean;
+  lastPodium: PodiumRow[];
+};
+
+// The palmarès: a private league's past seasons, the public league's monthly winners
+export type PastSeason = { number: number; weeks: number; endsAt: string; podium: PodiumRow[] };
+export type MonthlyWinners = { month: string; winners: { user: string; username: string; points: number }[] };

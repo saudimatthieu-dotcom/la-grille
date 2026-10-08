@@ -5,12 +5,23 @@ import uid2 from "uid2";
 import Event from "../models/events";
 import Grid from "../models/grids";
 import League from "../models/leagues";
+import Message from "../models/messages";
 import Prediction from "../models/predictions";
 import User from "../models/users";
 import { checkBody } from "../modules/checkBody";
-import { getSeason, getWeek } from "../modules/getWeek";
+import { getMonday, getSeason, getWeek } from "../modules/getWeek";
 import { leagueEvents } from "../modules/selections";
 import { FREE_LEAGUE_MAX_MEMBERS, isVip } from "../modules/vip";
+import { getMonthPoints, monthKey } from "../modules/monthlyPrize";
+import { findPlayerLeague } from "../modules/publicLeague";
+import {
+    MAX_SEASON_WEEKS,
+    MIN_SEASON_WEEKS,
+    seasonEndsAt,
+    seasonLength,
+    seasonState,
+    seasonWeekIndex,
+} from "../modules/seasons";
 import { buildRanking } from "../modules/ranking";
 import { getSeasonPoints, getWeekPoints } from "../modules/leaguePoints";
 
@@ -55,12 +66,23 @@ router.post("/", (req, res) => {
             return;
         }
 
+        // 10 weeks — a VIP creator chooses 4 to 30
+        const seasonWeeks = seasonLength(req.body.seasonWeeks, isVip(user));
+
+        if (seasonWeeks === null) {
+            res.json({ result: false, error: `A season lasts ${MIN_SEASON_WEEKS} to ${MAX_SEASON_WEEKS} weeks` });
+            return;
+        }
+
         const newLeague = new League({
             name: req.body.name,
             code: uid2(6).toUpperCase(),
             gridType: req.body.gridType,
             owner: user._id,
             members: [{ user: user._id }],
+            // The first season starts this week
+            seasonWeeks,
+            seasonStartsAt: getMonday(new Date()),
         });
 
         newLeague.save().then((newDoc) => {
@@ -172,7 +194,9 @@ router.get("/:leagueId/ranking/:token", (req, res) => {
         return;
     }
 
-    const scope = req.query.scope === "week" ? "week" : "season";
+    // "month": the public league's month ranking (its monthly prize) — "season": the league's season (the public
+    // league's never resets: it's the general ranking)
+    const scope = req.query.scope === "week" || req.query.scope === "month" ? req.query.scope : "season";
 
     // The week to rank: this week by default, or an older one with ?season=…&week=… (Semaine tab only)
     const now = new Date();
@@ -214,8 +238,16 @@ router.get("/:leagueId/ranking/:token", (req, res) => {
                     Grid.findOne({ season, week }),
                     findOtherWeek(season, week, "previous"),
                     findOtherWeek(season, week, "next"),
-                ]).then(([weekPoints, grid, previous, next]) => {
-                    const points = scope === "season" ? getSeasonPoints(league) : weekPoints;
+                    // This calendar month's points: only the public league has a month ranking
+                    scope === "month" && league.isPublic
+                        ? getMonthPoints(league, monthKey(now)).then((data) => data.pointsByUser)
+                        : Promise.resolve(null),
+                ]).then(([weekPoints, grid, previous, next, monthPoints]) => {
+                    let points = scope === "week" ? weekPoints : getSeasonPoints(league);
+
+                    if (monthPoints) {
+                        points = monthPoints;
+                    }
 
                     // weekPoints on every row: the "+3 this week" shown next to the season total
                     const ranking = buildRanking(members, points).map((row) => ({
@@ -236,8 +268,112 @@ router.get("/:leagueId/ranking/:token", (req, res) => {
                         gridId: grid?._id ?? null,
                         previous,
                         next,
+                        // The palmarès: the podiums of past seasons, or the public league's monthly winners
+                        pastSeasons: league.pastSeasons,
+                        monthlyWinners: league.monthlyWinners,
                     });
                 });
+            });
+        });
+    });
+});
+
+// What the season banner shows: which season, which week, when it ends, and whether I can start the next one
+function seasonInfo(league: InstanceType<typeof League>, user: InstanceType<typeof User>) {
+    const isOwner = Boolean(league.owner?.equals(user._id));
+
+    return {
+        isPublic: Boolean(league.isPublic),
+        number: league.seasonNumber,
+        weeks: league.seasonWeeks,
+        weekIndex: seasonWeekIndex(league),
+        endsAt: seasonEndsAt(league),
+        state: seasonState(league),
+        isOwner,
+        // A VIP creator chooses the next season's length
+        canChooseLength: isOwner && isVip(user),
+        lastPodium: league.pastSeasons[league.pastSeasons.length - 1]?.podium ?? [],
+    };
+}
+
+// GET /leagues/:leagueId/season/:token — the league's season (private leagues; null for the public league)
+router.get("/:leagueId/season/:token", (req, res) => {
+    if (!mongoose.isValidObjectId(req.params.leagueId)) {
+        res.json({ result: false, error: "Invalid league id" });
+        return;
+    }
+
+    User.findOne({ token: req.params.token }).then((user) => {
+        if (!user) {
+            res.json({ result: false, error: "User not found" });
+            return;
+        }
+
+        findPlayerLeague(req.params.leagueId, user._id).then((league) => {
+            if (!league) {
+                res.json({ result: false, error: "Not a member of this league" });
+                return;
+            }
+
+            res.json({ result: true, season: league.isPublic ? null : seasonInfo(league, user) });
+        });
+    });
+});
+
+// POST /leagues/:leagueId/restart — the creator starts the next season once the last one is closed
+router.post("/:leagueId/restart", (req, res) => {
+    if (!checkBody(req.body, ["token"]) || !mongoose.isValidObjectId(req.params.leagueId)) {
+        res.json({ result: false, error: "Missing or empty fields" });
+        return;
+    }
+
+    User.findOne({ token: req.body.token }).then((user) => {
+        if (!user) {
+            res.json({ result: false, error: "User not found" });
+            return;
+        }
+
+        League.findById(req.params.leagueId).then((league) => {
+            if (!league || league.isPublic) {
+                res.json({ result: false, error: "League not found" });
+                return;
+            }
+
+            if (!league.owner?.equals(user._id)) {
+                res.json({ result: false, error: "Only the league's creator can start the next season" });
+                return;
+            }
+
+            if (league.seasonStatus !== "finished") {
+                res.json({ result: false, error: "The season isn't over yet" });
+                return;
+            }
+
+            const seasonWeeks = seasonLength(req.body.seasonWeeks, isVip(user));
+
+            if (seasonWeeks === null) {
+                res.json({ result: false, error: `A season lasts ${MIN_SEASON_WEEKS} to ${MAX_SEASON_WEEKS} weeks` });
+                return;
+            }
+
+            // Starts this week: everyone at 0 (the points were reset when the last season closed)
+            league.seasonNumber = (league.seasonNumber ?? 1) + 1;
+            league.seasonWeeks = seasonWeeks;
+            league.seasonStartsAt = getMonday(new Date());
+            league.seasonStatus = "running";
+
+            const endsAt = seasonEndsAt(league) as Date;
+            const lastDay = new Date(endsAt.getTime() - 1).toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+
+            league.save().then((savedLeague) => {
+                new Message({
+                    league: savedLeague._id,
+                    type: "system",
+                    text: `🔄 La saison ${savedLeague.seasonNumber} est lancée : ${seasonWeeks} semaines, jusqu'au ${lastDay}. Tout le monde repart de 0 !`,
+                    meta: { kind: "season", number: savedLeague.seasonNumber },
+                }).save();
+
+                res.json({ result: true, season: seasonInfo(savedLeague, user) });
             });
         });
     });

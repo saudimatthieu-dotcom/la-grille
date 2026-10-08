@@ -11,6 +11,7 @@ import { buildRanking } from "../modules/ranking";
 import { findTactics, getSeasonPoints, getWeekPoints, tacticsOf } from "../modules/leaguePoints";
 import { isPlayed } from "../modules/gridTypes";
 import { findPicked } from "../modules/selections";
+import { seasonState } from "../modules/seasons";
 import { findPlayerLeague } from "../modules/publicLeague";
 import { BONUS_KINDS, pointsInLeague } from "../modules/scoring";
 import type { BonusKind } from "../modules/scoring";
@@ -67,6 +68,12 @@ router.post("/", (req, res) => {
 
       if (!grid) {
         res.json({ result: false, error: "Grid not found" });
+        return;
+      }
+
+      // Season over: nothing counts until the creator starts the next one
+      if (seasonState(league) === "ending" || seasonState(league) === "finished") {
+        res.json({ result: false, error: "The season is over: waiting for the league's creator to start the next one" });
         return;
       }
 

@@ -25,3 +25,8 @@ export function getWeekStart(season: number, week: number) {
   const firstMonday = january4.getDate() - ((january4.getDay() + 6) % 7);
   return new Date(season, 0, firstMonday + (week - 1) * 7);
 }
+
+// Monday 00:00 of the date's week (local time)
+export function getMonday(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() - ((date.getDay() + 6) % 7));
+}

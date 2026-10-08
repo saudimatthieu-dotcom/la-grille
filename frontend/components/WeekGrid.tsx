@@ -11,6 +11,7 @@ import { SPORT_ICONS } from "../config/sports";
 import { BONUSES } from "../config/bonuses";
 import Countdown from "./Countdown";
 import ProgressBar from "./ProgressBar";
+import SeasonBanner from "./SeasonBanner";
 import type { Prediction, SportEvent } from "../types";
 import { eventTitle, formatDay, formatResult, formatTime } from "../utils/format";
 
@@ -33,6 +34,10 @@ export default function WeekGrid({ leagueId, leagueName }: Props) {
   const [now, setNow] = useState(0);
   // Sur-mesure league and I'm its VIP owner: I pick its matches
   const [canPick, setCanPick] = useState(false);
+  // The league's season is over: its matches show, but can't be predicted until the next season
+  const [seasonOver, setSeasonOver] = useState(false);
+  // +1 when the creator starts the next season: loads the grid again
+  const [reload, setReload] = useState(0);
 
   const isFocused = useIsFocused();
 
@@ -55,6 +60,7 @@ export default function WeekGrid({ leagueId, leagueName }: Props) {
           return;
         }
 
+        setSeasonOver(Boolean(data.seasonOver));
         setEvents(data.grid.events);
         setGridId(data.grid._id);
         setNow(Date.now());
@@ -69,7 +75,7 @@ export default function WeekGrid({ leagueId, leagueName }: Props) {
           });
       })
       .catch(() => setError("Impossible to connect to server"));
-  }, [isFocused, token, leagueId]);
+  }, [isFocused, token, leagueId, reload]);
 
   const weekPoints = predictions.reduce((total, prediction) => total + (prediction.points ?? 0), 0);
   const hasResults = events.some((event) => event.status === "finished");
@@ -109,8 +115,8 @@ export default function WeekGrid({ leagueId, leagueName }: Props) {
     return (
       <TouchableOpacity
         key={event._id}
-        style={[styles.row, isLocked && styles.rowLocked]}
-        disabled={isFinished || isLocked}
+        style={[styles.row, (isLocked || seasonOver) && styles.rowLocked]}
+        disabled={isFinished || isLocked || seasonOver}
         onPress={() => {
           if (event.sport === "football") {
             navigation.navigate("FootballPrediction", { gridId, event, prediction, leagueId });
@@ -146,6 +152,9 @@ export default function WeekGrid({ leagueId, leagueName }: Props) {
 
   return (
     <>
+      {/* Private leagues: which week of the season, and the end of season (podium, restart) */}
+      {leagueId && <SeasonBanner leagueId={leagueId} onRestart={() => setReload(reload + 1)} />}
+
       <Text style={styles.sectionTitle}>Grille de la semaine</Text>
       <Text style={styles.subtitle}>
         {predictions.length} / {events.length} pronostics · {weekPoints} pts cette semaine
