@@ -183,8 +183,8 @@ export default function PicksScreen({ navigation, route }: Props) {
 
         <Text style={styles.hint}>
           {picked.length === 0
-            ? `Aucun match coché : la grille prend automatiquement les ${events.length} matchs ci-dessous.`
-            : `${picked.length} match${picked.length > 1 ? "s" : ""} coché${picked.length > 1 ? "s" : ""} : seuls ceux-là sont dans la grille.`}
+            ? `Aucun match coché : les joueurs verront automatiquement les ${events.length} matchs de la semaine du ${formatWeek(season, week)}, et seulement ceux-là.`
+            : `${picked.length} match${picked.length > 1 ? "s" : ""} coché${picked.length > 1 ? "s" : ""} : les joueurs ne verront que ceux-là cette semaine-là.`}
         </Text>
 
         {events.length === 0 && error === "" && (
