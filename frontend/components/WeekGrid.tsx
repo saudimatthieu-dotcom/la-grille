@@ -187,6 +187,11 @@ export default function WeekGrid({ leagueId, leagueName }: Props) {
 
       {error !== "" && <Text style={styles.error}>{error}</Text>}
 
+      {/* No automatic grid: until the matches are picked, there's nothing to predict */}
+      {gridId !== "" && events.length === 0 && (
+        <Text style={styles.empty}>Les matchs de la semaine n&apos;ont pas encore été choisis. Reviens bientôt !</Text>
+      )}
+
       {matchRows}
     </>
   );
@@ -242,6 +247,12 @@ const styles = StyleSheet.create({
     color: colors.danger,
     fontSize: 14,
     marginBottom: 12,
+  },
+  empty: {
+    color: colors.muted,
+    fontSize: 15,
+    textAlign: "center",
+    marginTop: 24,
   },
   row: {
     flexDirection: "row",

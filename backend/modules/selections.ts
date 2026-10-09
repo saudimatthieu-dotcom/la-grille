@@ -16,17 +16,17 @@ export function selectionFilter(league: LeagueDoc, season: number, week: number)
   return { season, week, gridType: league.gridType ?? "officielle", league: null };
 }
 
-// The ids of the matches picked by hand for this league that week — null: nothing picked (automatic)
+// The ids of the matches picked by hand for this league that week — null: nothing picked (no match)
 export function findPicked(league: LeagueDoc, season?: number | null, week?: number | null) {
   return Selection.findOne(selectionFilter(league, season ?? 0, week ?? 0)).then((selection) =>
     selection && selection.events.length > 0 ? selection.events.map(String) : null
   );
 }
 
-// The matches of a grid that this league plays: picked by hand, or the ones of its type
+// The matches of a grid that this league plays: the ones picked by hand
 export function leagueEvents<T extends GridEvent>(league: LeagueDoc, grid: { season?: number | null; week?: number | null; events: T[] }) {
   return findPicked(league, grid.season, grid.week).then((picked) =>
-    grid.events.filter((event) => isPlayed(league.gridType, event, picked))
+    grid.events.filter((event) => isPlayed(event, picked))
   );
 }
 

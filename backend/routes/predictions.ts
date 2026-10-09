@@ -77,9 +77,9 @@ router.post("/", (req, res) => {
         return;
       }
 
-      // The matches picked by hand for this league that week (admins, or the sur-mesure owner) — null: automatic
+      // The matches picked by hand for this league that week (admins, or the sur-mesure owner) — null: no match
       findPicked(league, grid.season, grid.week).then((picked) => {
-        if (!isPlayed(league.gridType, event, picked)) {
+        if (!isPlayed(event, picked)) {
           res.json({ result: false, error: "This match isn't in this league's grid" });
           return;
         }
@@ -229,7 +229,7 @@ router.get("/results/:gridId/:token", (req, res) => {
         ]).then(([tactics, weekPoints, users, picked]) => {
           // Each finished match of this league's grid, with what I predicted there and what it gave me
           const results = grid.events
-            .filter((event) => event.status === "finished" && isPlayed(league.gridType, event, picked))
+            .filter((event) => event.status === "finished" && isPlayed(event, picked))
             .map((event) => {
               const prediction = predictions.find((item) => item.event?.equals(event._id));
               const { bonus, sabotage } = tacticsOf(tactics, prediction?._id);

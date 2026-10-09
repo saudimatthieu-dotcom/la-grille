@@ -149,8 +149,8 @@ export default function AdminScreen({ navigation }: Props) {
         <Text style={styles.buttonText}>CHOISIR LES MATCHS DES GRILLES</Text>
       </TouchableOpacity>
       <Text style={styles.hint}>
-        Officielle, Classique, Exotique : coche les matchs de chaque semaine. Sans choix, la grille prend
-        automatiquement les matchs du type.
+        Officielle, Classique, Exotique : coche les matchs de chaque semaine. Rien n&apos;est automatique : sans choix,
+        la grille de la semaine reste vide.
       </Text>
 
       <Text style={styles.section}>Pass VIP</Text>

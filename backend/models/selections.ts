@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 // The matches picked by hand for one week: by an admin for a grid type (officielle, classique, exotique),
-// or by the VIP owner of a sur-mesure league for their league. No selection = the automatic one (gridTypes.ts)
+// or by the VIP owner of a sur-mesure league for their league. No selection = no match that week
 const selectionSchema = new mongoose.Schema({
   season: Number,
   week: Number,

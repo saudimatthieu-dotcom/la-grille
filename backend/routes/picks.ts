@@ -89,7 +89,7 @@ function loadPicker(token: unknown, gridType: unknown, leagueId: unknown) {
   });
 }
 
-// The week's matches that can be picked, which ones are, and which ones the automatic rule would take
+// The week's matches that can be picked, and which ones are
 function loadWeek(context: Exclude<PickerContext, { error: string }>, offset: number) {
   const { season, week, start, end } = weekFromNow(offset);
 
@@ -118,7 +118,7 @@ function weekResponse(data: Awaited<ReturnType<typeof loadWeek>>, offset: number
       // Already locked: can't be added any more
       isLocked: !event.lockAt || event.lockAt <= now,
     })),
-    // Nothing picked = the automatic grid: every match of the list
+    // Nothing picked = no match in the grid that week
     picked: data.picked,
   };
 }
@@ -149,7 +149,7 @@ router.get("/:token", (req, res) => {
   });
 });
 
-// PUT /picks — saves the matches picked for a week (an empty list: back to the automatic grid)
+// PUT /picks — saves the matches picked for a week (an empty list: no match that week)
 router.put("/", (req, res) => {
   if (!checkBody(req.body, ["token"]) || !Array.isArray(req.body.eventIds)) {
     res.json({ result: false, error: "Missing or empty fields" });
@@ -179,10 +179,9 @@ router.put("/", (req, res) => {
         return;
       }
 
-      // What the grid shows before and after: nothing picked = every match of the list
-      const allIds = data.events.map((event) => String(event._id));
-      const shownBefore = data.picked.length > 0 ? data.picked : allIds;
-      const shownAfter = eventIds.length > 0 ? eventIds : allIds;
+      // What the grid shows before and after: only the picked matches (nothing picked = no match)
+      const shownBefore = data.picked;
+      const shownAfter = eventIds;
 
       // A match that has started can't join the grid any more
       const added = shownAfter.filter((id) => !shownBefore.includes(id));
@@ -210,7 +209,7 @@ router.put("/", (req, res) => {
 
           const key = { season: data.season, week: data.week, ...context.owner };
 
-          // Nothing picked: the selection goes, the grid is automatic again
+          // Nothing picked: the selection goes, the grid is empty
           const save =
             eventIds.length === 0
               ? Selection.deleteOne(key)

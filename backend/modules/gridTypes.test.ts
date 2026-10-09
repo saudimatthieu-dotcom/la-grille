@@ -50,17 +50,13 @@ describe("isPlayed", () => {
   const psg = { _id: "e1", sport: "football", competition: "Ligue 1" };
   const gp = { _id: "e2", sport: "f1", competition: "Formula 1" };
 
-  it("follows the grid type when nothing is picked", () => {
-    expect(isPlayed("classique", psg, null)).toBe(true);
-    expect(isPlayed("classique", gp, [])).toBe(false);
+  it("plays no match when nothing is picked (no automatic grid)", () => {
+    expect(isPlayed(psg, null)).toBe(false);
+    expect(isPlayed(gp, [])).toBe(false);
   });
 
-  it("only plays the picked matches when there are some", () => {
-    expect(isPlayed("classique", psg, ["e2"])).toBe(false);
-    expect(isPlayed("officielle", gp, ["e2"])).toBe(true);
-  });
-
-  it("plays every match of a sur-mesure league until its owner picks", () => {
-    expect(isPlayed("surmesure", gp, null)).toBe(true);
+  it("only plays the picked matches", () => {
+    expect(isPlayed(psg, ["e2"])).toBe(false);
+    expect(isPlayed(gp, ["e2"])).toBe(true);
   });
 });

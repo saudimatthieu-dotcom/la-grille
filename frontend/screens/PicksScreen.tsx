@@ -77,7 +77,7 @@ export default function PicksScreen({ navigation, route }: Props) {
     setPicked(picked.includes(eventId) ? picked.filter((id) => id !== eventId) : [...picked, eventId]);
   };
 
-  // eventIds: the ticked matches — an empty list puts the grid back on automatic
+  // eventIds: the ticked matches — an empty list leaves the week without matches
   const save = (eventIds: string[]) => {
     setError("");
     setMessage("");
@@ -183,7 +183,7 @@ export default function PicksScreen({ navigation, route }: Props) {
 
         <Text style={styles.hint}>
           {picked.length === 0
-            ? `Aucun match coché : les joueurs verront automatiquement les ${events.length} matchs de la semaine du ${formatWeek(season, week)}, et seulement ceux-là.`
+            ? `Aucun match coché : la grille de la semaine du ${formatWeek(season, week)} sera vide, les joueurs n'auront rien à pronostiquer.`
             : `${picked.length} match${picked.length > 1 ? "s" : ""} coché${picked.length > 1 ? "s" : ""} : les joueurs ne verront que ceux-là cette semaine-là.`}
         </Text>
 
