@@ -7,6 +7,8 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import type { RootState, RootStackParamList } from "../App";
 import { colors } from "../config/theme";
 import { SPORT_ICONS } from "../config/sports";
+import type { TacticKind } from "../config/bonuses";
+import TacticIcon from "../components/TacticIcon";
 import type { Bonus, PredictionPayload, SportEvent } from "../types";
 import { eventTitle, formatDate, formatPayload, formatResult, formatWeek, ordinal } from "../utils/format";
 
@@ -33,20 +35,22 @@ type Results = {
   passed: string[];
 };
 
-// Short tags explaining the points: "⚡ Doubleur", "💣 Saboté"…
+// Short tags explaining the points, each with its neon icon: Doubleur, Saboté…
 function tagsOf(item: ResultItem) {
-  const tags: string[] = [];
+  const tags: { kind: TacticKind; label: string }[] = [];
 
   if (item.sabotaged) {
-    tags.push(item.shieldTriggered ? "🛡️ Sabotage bloqué" : "💣 Saboté");
+    tags.push(
+      item.shieldTriggered ? { kind: "bouclier", label: "Sabotage bloqué" } : { kind: "sabotage", label: "Saboté" }
+    );
   } else if (item.bonus?.bouclier) {
-    tags.push("🛡️ Bouclier");
+    tags.push({ kind: "bouclier", label: "Bouclier" });
   }
   if (item.bonus?.doubleur) {
-    tags.push("⚡ Doubleur");
+    tags.push({ kind: "doubleur", label: "Doubleur" });
   }
   if (item.bonus?.assurance) {
-    tags.push("☂️ Assurance");
+    tags.push({ kind: "assurance", label: "Assurance" });
   }
   return tags;
 }
@@ -90,7 +94,14 @@ export default function ResultScreen({ navigation, route }: Props) {
         <Text style={styles.prono}>{item.payload ? formatPayload(item.event, item.payload) : "Pas de prono"}</Text>
 
         <View style={styles.cardFooter}>
-          <Text style={styles.tags}>{tags.join("  ·  ")}</Text>
+          <View style={styles.tags}>
+            {tags.map((tag) => (
+              <View key={tag.label} style={styles.tag}>
+                <TacticIcon kind={tag.kind} size={32} />
+                <Text style={styles.tagText}>{tag.label}</Text>
+              </View>
+            ))}
+          </View>
           <View style={styles.pointsBadge}>
             <Text style={styles.pointsText}>{item.points != null ? `+${item.points} pts` : "—"}</Text>
           </View>
@@ -300,6 +311,16 @@ const styles = StyleSheet.create({
   },
   tags: {
     flex: 1,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  tag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  tagText: {
     color: colors.muted,
     fontSize: 12,
     fontWeight: "700",

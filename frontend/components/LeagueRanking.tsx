@@ -8,6 +8,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import type { RootState, RootStackParamList } from "../App";
 import { colors } from "../config/theme";
 import Avatar from "./Avatar";
+import TacticIcon from "./TacticIcon";
 import { formatWeek } from "../utils/format";
 import type { MonthlyWinners, PastSeason } from "../types";
 
@@ -165,7 +166,7 @@ export default function LeagueRanking({ leagueId, leagueName }: Props) {
               navigation.navigate("Sabotage", { leagueId, targetUserId: row.userId, targetUsername: row.username })
             }
           >
-            <MaterialCommunityIcons name="bomb" size={22} color={colors.danger} />
+            <TacticIcon kind="sabotage" size={52} />
           </TouchableOpacity>
         )}
       </View>
@@ -387,7 +388,7 @@ const styles = StyleSheet.create({
     borderColor: colors.danger,
     borderWidth: 1.5,
     borderRadius: 10,
-    padding: 6,
+    padding: 4,
   },
   button: {
     backgroundColor: colors.accent,

@@ -12,6 +12,7 @@ import { BONUSES } from "../config/bonuses";
 import Countdown from "./Countdown";
 import ProgressBar from "./ProgressBar";
 import SeasonBanner from "./SeasonBanner";
+import TacticIcon from "./TacticIcon";
 import type { Prediction, SportEvent } from "../types";
 import { eventTitle, formatDay, formatResult, formatTime } from "../utils/format";
 
@@ -91,7 +92,7 @@ export default function WeekGrid({ leagueId, leagueName }: Props) {
     const isFinished = event.status === "finished";
     const isLocked = !isFinished && new Date(event.lockAt).getTime() <= now;
     // The bonus I played on this match here, if any: its icon sits next to the status
-    const bonusIcon = BONUSES.find((item) => item.kind === prediction?.bonus)?.icon;
+    const bonus = BONUSES.find((item) => item.kind === prediction?.bonus);
 
     let status = (
       <Ionicons
@@ -144,7 +145,7 @@ export default function WeekGrid({ leagueId, leagueName }: Props) {
             <Text style={styles.rowInfo}>{event.competition}</Text>
           </View>
         </View>
-        {bonusIcon && <Ionicons name={bonusIcon} size={18} color={colors.accent} />}
+        {bonus && <TacticIcon kind={bonus.kind} size={56} />}
         {status}
       </TouchableOpacity>
     );
@@ -297,7 +298,7 @@ const styles = StyleSheet.create({
   },
   rowTitle: {
     color: colors.text,
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "800",
   },
   rowInfo: {

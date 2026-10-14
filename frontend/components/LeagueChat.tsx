@@ -5,8 +5,10 @@ import { Ionicons } from "@expo/vector-icons";
 
 import type { RootState } from "../App";
 import { colors } from "../config/theme";
+import { splitTacticText } from "../config/bonuses";
 import type { ChatMessage } from "../types";
 import Avatar from "./Avatar";
+import TacticIcon from "./TacticIcon";
 
 type Props = {
   leagueId: string;
@@ -71,10 +73,14 @@ export default function LeagueChat({ leagueId }: Props) {
   const bubbles = messages.map((message) => {
     // System logs (sabotage, bouclier) are centred, like an announcement
     if (message.type === "system") {
+      // A bonus or a sabotage: its neon icon in place of the emoji the text starts with
+      const { kind, text: systemText } = splitTacticText(message.text);
+
       return (
-        <Text key={message._id} style={styles.system}>
-          {message.text}
-        </Text>
+        <View key={message._id} style={styles.systemRow}>
+          {kind && <TacticIcon kind={kind} size={32} />}
+          <Text style={styles.system}>{systemText}</Text>
+        </View>
       );
     }
 
@@ -161,12 +167,19 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 40,
   },
+  systemRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginVertical: 6,
+  },
   system: {
+    flexShrink: 1,
     color: colors.gold,
     fontSize: 13,
     fontWeight: "700",
     textAlign: "center",
-    marginVertical: 6,
   },
   bubble: {
     maxWidth: "78%",

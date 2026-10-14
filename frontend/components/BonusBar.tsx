@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { StyleSheet, Switch, Text, View } from "react-native";
 import { useSelector } from "react-redux";
-import { Ionicons } from "@expo/vector-icons";
 
 import type { RootState } from "../App";
 import { BONUSES } from "../config/bonuses";
+import TacticIcon from "./TacticIcon";
 import { colors } from "../config/theme";
 import type { BonusKind } from "../types";
 import { maxPoints } from "../utils/format";
@@ -72,7 +72,7 @@ export default function BonusBar({ sport, gridId, leagueId, predictionId, value,
 
     return (
       <View key={item.kind} style={[styles.row, isDisabled && styles.rowDisabled]}>
-        <Ionicons name={item.icon} size={22} color={isActive ? colors.accent : colors.text} />
+        <TacticIcon kind={item.kind} size={84} faded={!isActive} />
         <View style={styles.rowBody}>
           <Text style={styles.label}>
             {item.label} <Text style={styles.stock}>×{Math.max(stock, 0)}</Text>

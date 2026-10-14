@@ -9,7 +9,9 @@ import { Ionicons } from "@expo/vector-icons";
 import type { RootState, RootStackParamList, TabParamList } from "../App";
 import { colors } from "../config/theme";
 import { AVATARS } from "../config/avatars";
+import { BONUSES } from "../config/bonuses";
 import Avatar from "../components/Avatar";
+import TacticIcon from "../components/TacticIcon";
 import { login, logout } from "../reducers/user";
 import { useMe } from "../utils/useMe";
 
@@ -120,7 +122,14 @@ export default function ProfileScreen({ navigation }: Props) {
 
       {/* No stock to show any more: the bonuses are per league and per week, the BonusBar shows them */}
       <Text style={styles.section}>Mes bonus</Text>
-      <Text style={styles.inventory}>⚡ 1 Doubleur · ☂️ 1 Assurance · 🛡️ 1 Bouclier</Text>
+      <View style={styles.inventory}>
+        {BONUSES.map((bonus) => (
+          <View key={bonus.kind} style={styles.inventoryItem}>
+            <TacticIcon kind={bonus.kind} size={40} />
+            <Text style={styles.inventoryText}>1 {bonus.label}</Text>
+          </View>
+        ))}
+      </View>
       <Text style={styles.hint}>
         Chaque semaine, dans chaque ligue privée. Un seul bonus par prono, perdu le lundi s&apos;il n&apos;est pas
         utilisé. Pas d&apos;Assurance en F1 ni en cyclisme.
@@ -230,6 +239,16 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   inventory: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 14,
+  },
+  inventoryItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  inventoryText: {
     color: colors.text,
     fontSize: 15,
     fontWeight: "700",

@@ -8,6 +8,7 @@ import type { RootState, RootStackParamList } from "../App";
 import { colors } from "../config/theme";
 import { SPORT_ICONS, SPORT_LABELS } from "../config/sports";
 import ProgressBar from "../components/ProgressBar";
+import TacticIcon from "../components/TacticIcon";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Stats">;
 
@@ -72,11 +73,12 @@ export default function StatsScreen({ navigation }: Props) {
 
   const bonusRows = stats
     ? [
-        { label: "⚡ Doubleur", hint: "a doublé des points", stat: stats.bonuses.doubleur },
-        { label: "☂️ Assurance", hint: "a donné le max", stat: stats.bonuses.assurance },
-        { label: "🛡️ Bouclier", hint: "a bloqué un sabotage", stat: stats.bonuses.bouclier },
+        { kind: "doubleur" as const, label: "Doubleur", hint: "a doublé des points", stat: stats.bonuses.doubleur },
+        { kind: "assurance" as const, label: "Assurance", hint: "a donné le max", stat: stats.bonuses.assurance },
+        { kind: "bouclier" as const, label: "Bouclier", hint: "a bloqué un sabotage", stat: stats.bonuses.bouclier },
       ].map((item) => (
         <View key={item.label} style={styles.bonusRow}>
+          <TacticIcon kind={item.kind} size={48} />
           <View style={styles.bonusBody}>
             <Text style={styles.bonusLabel}>{item.label}</Text>
             <Text style={styles.muted}>{item.hint}</Text>
@@ -276,6 +278,7 @@ const styles = StyleSheet.create({
   bonusRow: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 12,
     paddingVertical: 12,
   },
   bonusBody: {

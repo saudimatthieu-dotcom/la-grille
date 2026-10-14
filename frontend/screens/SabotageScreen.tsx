@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useSelector } from "react-redux";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 
 import type { RootState, RootStackParamList } from "../App";
 import { colors } from "../config/theme";
+import TacticIcon from "../components/TacticIcon";
 import { SPORT_ICONS } from "../config/sports";
 import type { SportEvent } from "../types";
 
@@ -42,7 +43,7 @@ export default function SabotageScreen({ navigation, route }: Props) {
       .then((response) => response.json())
       .then((data) => {
         if (data.result) {
-          Alert.alert("💣 Sabotage lancé", `Réponse quand le match sera joué… sauf si ${targetUsername} a un Bouclier !`);
+          Alert.alert("Sabotage lancé", `Réponse quand le match sera joué… sauf si ${targetUsername} a un Bouclier !`);
           navigation.goBack();
         } else {
           setError(data.error);
@@ -77,7 +78,7 @@ export default function SabotageScreen({ navigation, route }: Props) {
           <Text style={styles.rowTitle}>{title}</Text>
           <Text style={styles.rowInfo}>{date}</Text>
         </View>
-        <MaterialCommunityIcons name="bomb" size={22} color={colors.danger} />
+        <TacticIcon kind="sabotage" size={64} />
       </TouchableOpacity>
     );
   });
