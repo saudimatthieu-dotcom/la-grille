@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "La Grille",
-    "slug": "frontend",
+    "slug": "la-grille",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -10,6 +10,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "app.lagrille",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -23,6 +24,12 @@
     },
     "plugins": [
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "d3675cda-0e7d-4a11-898b-0c473ea83226"
+      }
+    },
+    "owner": "matthieusaudi"
   }
 }
