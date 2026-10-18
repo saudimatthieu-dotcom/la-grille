@@ -18,6 +18,8 @@ import { isVip } from "../modules/vip";
 
 const RESET_CODE_MINUTES = 15;
 const RESET_MAX_ATTEMPTS = 5;
+const PUSH_PLATFORMS = ["android", "ios", "web"];
+const NOTIFICATION_KINDS = ["newGrid", "closingSoon", "results"] as const;
 
 const router = express.Router();
 
@@ -182,6 +184,8 @@ router.get("/me/:token", (req, res) => {
         isAdmin: data.isAdmin,
         isVip: isVip(data),
         vipUntil: data.vipUntil,
+        // The Profil switches show this
+        notifications: data.notifications,
       },
     });
   });
@@ -278,6 +282,66 @@ router.put("/me", (req, res) => {
           },
         });
       });
+    });
+  });
+});
+
+// PUT /users/me/push-token — save this device's Expo push token (sent by the app after sign-in)
+router.put("/me/push-token", (req, res) => {
+  if (!checkBody(req.body, ["token", "pushToken", "platform"])) {
+    res.json({ result: false, error: "Missing or empty fields" });
+    return;
+  }
+
+  const { pushToken, platform } = req.body;
+
+  if (typeof pushToken !== "string" || !pushToken.startsWith("ExponentPushToken[")) {
+    res.json({ result: false, error: "Invalid push token" });
+    return;
+  }
+
+  if (!PUSH_PLATFORMS.includes(platform)) {
+    res.json({ result: false, error: "Invalid platform" });
+    return;
+  }
+
+  User.findOne({ token: req.body.token }).then((user) => {
+    if (!user) {
+      res.json({ result: false, error: "User not found" });
+      return;
+    }
+
+    // One device = one account: if someone else signed in on this phone before, they stop getting its notifications
+    // (this also removes it from me, so the $push below never makes a duplicate)
+    User.updateMany({ "pushTokens.token": pushToken }, { $pull: { pushTokens: { token: pushToken } } }).then(() => {
+      User.updateOne({ _id: user._id }, { $push: { pushTokens: { token: pushToken, platform } } }).then(() => {
+        res.json({ result: true });
+      });
+    });
+  });
+});
+
+// PUT /users/me/notifications — switch notifications on/off (Profil); only the booleans sent are changed
+router.put("/me/notifications", (req, res) => {
+  if (!checkBody(req.body, ["token"])) {
+    res.json({ result: false, error: "Missing or empty fields" });
+    return;
+  }
+
+  User.findOne({ token: req.body.token }).then((user) => {
+    if (!user) {
+      res.json({ result: false, error: "User not found" });
+      return;
+    }
+
+    for (const kind of NOTIFICATION_KINDS) {
+      if (typeof req.body[kind] === "boolean") {
+        user.notifications![kind] = req.body[kind];
+      }
+    }
+
+    user.save().then((savedUser) => {
+      res.json({ result: true, notifications: savedUser.notifications });
     });
   });
 });

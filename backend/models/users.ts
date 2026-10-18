@@ -16,6 +16,14 @@ const userSchema = new mongoose.Schema({
   resetCode: { type: String, default: null },
   resetExpires: { type: Date, default: null },
   resetAttempts: { type: Number, default: 0 },
+  // Expo push tokens: one per device (phone, tablet, later the website) — a list so a new device doesn't replace the old one
+  pushTokens: [{ _id: false, token: String, platform: String }],
+  // Which notifications the user wants (switches in Profil) — all on by default
+  notifications: {
+    newGrid: { type: Boolean, default: true },
+    closingSoon: { type: Boolean, default: true },
+    results: { type: Boolean, default: true },
+  },
   createdAt: { type: Date, default: Date.now },
 });
 
