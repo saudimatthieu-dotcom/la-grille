@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "172251153670",
+    "project_id": "la-grille",
+    "storage_bucket": "la-grille.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:172251153670:android:065eaf3b341a523cbaca87",
+        "android_client_info": {
+          "package_name": "app.lagrille"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCvOfNt-GZ8CENOXGQG635SvYlnyMB9q1Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -4,3 +4,7 @@ dossier_cadrage_la_grille.pdf
 AGENTS.md
 CLAUDE.md
 .claude/
+
+# Firebase server key (FCM V1) — secret, never commit (google-services.json is public, it stays tracked)
+*-firebase-adminsdk-*.json
+service-account*.json
