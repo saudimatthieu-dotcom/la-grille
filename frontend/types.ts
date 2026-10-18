@@ -69,7 +69,12 @@ export type Me = {
   isAdmin: boolean;
   isVip: boolean;
   vipUntil: string | null;
+  notifications: NotificationSettings;
 };
+
+// The 3 push notifications, each switchable in Profil
+export type NotificationKind = "newGrid" | "closingSoon" | "results";
+export type NotificationSettings = Record<NotificationKind, boolean>;
 
 // One match of the picks screen (GET /picks)
 export type PickEvent = SportEvent & { isLocked: boolean };

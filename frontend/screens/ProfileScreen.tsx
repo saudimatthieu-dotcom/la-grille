@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { useEffect, useState } from "react";
+import { ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from "react-native";
 import type { CompositeScreenProps } from "@react-navigation/native";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -10,9 +10,11 @@ import type { RootState, RootStackParamList, TabParamList } from "../App";
 import { colors } from "../config/theme";
 import { AVATARS } from "../config/avatars";
 import { BONUSES } from "../config/bonuses";
+import { NOTIFICATIONS } from "../config/notifications";
 import Avatar from "../components/Avatar";
 import TacticIcon from "../components/TacticIcon";
 import { login, logout } from "../reducers/user";
+import type { NotificationKind, NotificationSettings } from "../types";
 import { useMe } from "../utils/useMe";
 
 type Props = CompositeScreenProps<
@@ -29,6 +31,44 @@ export default function ProfileScreen({ navigation }: Props) {
   const [username, setUsername] = useState(user.username ?? "");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  // The notification switches: null until the server has answered
+  const [notifications, setNotifications] = useState<NotificationSettings | null>(null);
+
+  useEffect(() => {
+    if (me) {
+      setNotifications(me.notifications);
+    }
+  }, [me]);
+
+  // Flips one switch straight away, then saves it — the server's answer wins (back to the old value if it failed)
+  const toggleNotification = (kind: NotificationKind, value: boolean) => {
+    if (!notifications) {
+      return;
+    }
+
+    const previous = notifications;
+    setNotifications({ ...notifications, [kind]: value });
+    setError("");
+
+    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/users/me/notifications`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: user.token, [kind]: value }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.result) {
+          setNotifications(data.notifications);
+        } else {
+          setNotifications(previous);
+          setError(data.error);
+        }
+      })
+      .catch(() => {
+        setNotifications(previous);
+        setError("Impossible de contacter le serveur");
+      });
+  };
 
   // Saves a new username and/or avatar, then updates Redux so every screen shows it
   const save = (changes: { username?: string; avatar?: string }) => {
@@ -134,6 +174,23 @@ export default function ProfileScreen({ navigation }: Props) {
         Chaque semaine, dans chaque ligue privée. Un seul bonus par prono, perdu le lundi s&apos;il n&apos;est pas
         utilisé. Pas d&apos;Assurance en F1 ni en cyclisme.
       </Text>
+
+      <Text style={styles.section}>Notifications</Text>
+      {NOTIFICATIONS.map((item) => (
+        <View key={item.kind} style={styles.notificationRow}>
+          <View style={styles.notificationBody}>
+            <Text style={styles.notificationLabel}>{item.label}</Text>
+            <Text style={styles.notificationDescription}>{item.description}</Text>
+          </View>
+          <Switch
+            value={notifications?.[item.kind] ?? false}
+            onValueChange={(value) => toggleNotification(item.kind, value)}
+            disabled={!notifications}
+            trackColor={{ false: colors.border, true: colors.accent }}
+            thumbColor={colors.text}
+          />
+        </View>
+      ))}
 
       <TouchableOpacity style={styles.logout} onPress={handleLogout}>
         <Text style={styles.logoutText}>Se déconnecter</Text>
@@ -302,6 +359,30 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 13,
     marginTop: 4,
+    marginBottom: 20,
+  },
+  notificationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: colors.card,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 8,
+  },
+  notificationBody: {
+    flex: 1,
+  },
+  notificationLabel: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  notificationDescription: {
+    color: colors.muted,
+    fontSize: 13,
+    marginTop: 2,
   },
   logout: {
     alignSelf: "center",
