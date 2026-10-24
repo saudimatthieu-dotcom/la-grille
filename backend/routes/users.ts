@@ -9,6 +9,7 @@ import Tactic from "../models/tactics";
 import User from "../models/users";
 import { AVATARS } from "../config/avatars";
 import { checkBody } from "../modules/checkBody";
+import { findBannedWord } from "../modules/moderation";
 import { joinPublicLeague } from "../modules/publicLeague";
 import { BONUS_KINDS } from "../modules/scoring";
 import type { BonusKind } from "../modules/scoring";
@@ -26,6 +27,11 @@ const router = express.Router();
 router.post("/signup", (req, res) => {
   if (!checkBody(req.body, ["username", "email", "password"])) {
     res.json({ result: false, error: "Missing or empty fields" });
+    return;
+  }
+
+  if (findBannedWord(String(req.body.username))) {
+    res.json({ result: false, error: "Username contains forbidden words" });
     return;
   }
 
@@ -242,6 +248,11 @@ router.put("/me", (req, res) => {
 
   if (username !== undefined && (username.length < 2 || username.length > 20)) {
     res.json({ result: false, error: "Username must be 2 to 20 characters" });
+    return;
+  }
+
+  if (username !== undefined && findBannedWord(username)) {
+    res.json({ result: false, error: "Username contains forbidden words" });
     return;
   }
 

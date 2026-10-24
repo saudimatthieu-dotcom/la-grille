@@ -5,6 +5,8 @@ import League from "../models/leagues";
 import Message from "../models/messages";
 import User from "../models/users";
 import { checkBody } from "../modules/checkBody";
+import { findBannedWord } from "../modules/moderation";
+import { PRIVATE_CATEGORIES, PUBLIC_CATEGORIES } from "../config/bannedWords";
 
 const router = express.Router();
 
@@ -107,6 +109,12 @@ router.post("/league/:leagueId", (req, res) => {
   checkMember(req.body.token, req.params.leagueId).then((context) => {
     if ("error" in context) {
       res.json({ result: false, error: context.error });
+      return;
+    }
+
+    // Friends can chambrer in a private league (insults allowed), never harass or threaten
+    if (findBannedWord(text, context.league.isPublic ? PUBLIC_CATEGORIES : PRIVATE_CATEGORIES)) {
+      res.json({ result: false, error: "Message contains forbidden words" });
       return;
     }
 

@@ -9,6 +9,8 @@ import Message from "../models/messages";
 import Prediction from "../models/predictions";
 import User from "../models/users";
 import { checkBody } from "../modules/checkBody";
+import { findBannedWord } from "../modules/moderation";
+import { PRIVATE_CATEGORIES } from "../config/bannedWords";
 import { getMonday, getSeason, getWeek } from "../modules/getWeek";
 import { leagueEvents } from "../modules/selections";
 import { FREE_LEAGUE_MAX_MEMBERS, isVip } from "../modules/vip";
@@ -51,6 +53,12 @@ router.post("/", (req, res) => {
 
     if (!gridTypes.includes(req.body.gridType)) {
         res.json({ result: false, error: "Invalid grid type" });
+        return;
+    }
+
+    // A private league's name: only its members see it, so the friends' chambrage rules apply
+    if (findBannedWord(String(req.body.name), PRIVATE_CATEGORIES)) {
+        res.json({ result: false, error: "League name contains forbidden words" });
         return;
     }
 

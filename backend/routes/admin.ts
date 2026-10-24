@@ -19,6 +19,8 @@ import type { Result } from "../modules/scoring";
 import { fetchEventResult } from "../providers/thesportsdb";
 import { fetchRacePodium } from "../providers/jolpica";
 import { IMPORT_DAYS, importUpcomingEvents } from "../modules/importEvents";
+import { NOTIFICATION_TEXTS, sendPush } from "../modules/sendPush";
+import type { NotificationKind } from "../modules/sendPush";
 
 const router = express.Router();
 
@@ -208,6 +210,31 @@ router.post("/make-admin", (req, res) => {
 
     res.json({ result: true, username: user.username, isAdmin: user.isAdmin });
   });
+});
+
+// POST /admin/test-push — sends one notification to one account, to check push works end to end (by hand, with the secret)
+// kind: newGrid by default — nothing is sent if that account switched it off in Profil
+router.post("/test-push", (req, res) => {
+  if (!isAdmin(req.body.secret)) {
+    res.json({ result: false, error: "Forbidden" });
+    return;
+  }
+
+  if (!checkBody(req.body, ["email"])) {
+    res.json({ result: false, error: "Missing or empty fields" });
+    return;
+  }
+
+  const kind: NotificationKind = req.body.kind ?? "newGrid";
+
+  if (!(kind in NOTIFICATION_TEXTS)) {
+    res.json({ result: false, error: "Invalid notification kind" });
+    return;
+  }
+
+  sendPush({ email: String(req.body.email).trim() }, kind)
+    .then(({ sent, removed }) => res.json({ result: true, sent, removed }))
+    .catch(() => res.json({ result: false, error: "Expo push service unavailable" }));
 });
 
 // The admin account behind a token — null when the token isn't an admin's
