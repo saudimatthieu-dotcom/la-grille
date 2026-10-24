@@ -1,4 +1,5 @@
 import { StatusBar } from "expo-status-bar";
+import * as Notifications from "expo-notifications";
 
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -46,6 +47,16 @@ const store = configureStore({
 const persistor = persistStore(store);
 
 export type RootState = ReturnType<typeof store.getState>;
+
+// Without this, a notification that arrives while the app is open is not shown
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: false,
+    shouldSetBadge: false,
+  }),
+});
 
 export type RootStackParamList = {
   Welcome: undefined;

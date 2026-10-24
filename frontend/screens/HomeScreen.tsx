@@ -15,6 +15,7 @@ import Avatar from "../components/Avatar";
 import ProgressBar from "../components/ProgressBar";
 import TacticIcon from "../components/TacticIcon";
 import { ordinal } from "../utils/format";
+import { registerPush } from "../utils/registerPush";
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<TabParamList, "Accueil">,
@@ -40,6 +41,13 @@ export default function HomeScreen({ navigation }: Props) {
   const [leagues, setLeagues] = useState<MyLeague[]>([]);
   const [latest, setLatest] = useState<Latest>(null);
   const isFocused = useIsFocused();
+
+  // Saves this phone's push token once per sign-in (not on every focus like the effect below)
+  useEffect(() => {
+    if (user.token) {
+      registerPush(user.token);
+    }
+  }, [user.token]);
 
   // Reloads my leagues and the latest news every time I come back to this tab
   useEffect(() => {
