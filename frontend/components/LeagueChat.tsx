@@ -23,6 +23,8 @@ export default function LeagueChat({ leagueId }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState("");
   const [error, setError] = useState("");
+  // The bell: a push for each message of this league (null until the server answers)
+  const [chatNotifications, setChatNotifications] = useState<boolean | null>(null);
 
   // Since React Native 0.88 ScrollView is a function component: the ref holds a ScrollViewInstance (scrollToEnd…)
   const scrollRef = useRef<ScrollViewInstance>(null);
@@ -35,6 +37,7 @@ export default function LeagueChat({ leagueId }: Props) {
         .then((data) => {
           if (data.result) {
             setMessages(data.messages);
+            setChatNotifications(data.chatNotifications);
           } else {
             setError(data.error);
           }
@@ -72,6 +75,34 @@ export default function LeagueChat({ leagueId }: Props) {
       .catch(() => setError("Impossible to connect to server"));
   };
 
+  // Switches this league's chat push on/off — shown at once, put back if the server refuses
+  const toggleNotifications = () => {
+    if (chatNotifications === null) {
+      return;
+    }
+
+    const previous = chatNotifications;
+    setChatNotifications(!previous);
+    setError("");
+
+    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/messages/league/${leagueId}/notifications`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, enabled: !previous }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (!data.result) {
+          setChatNotifications(previous);
+          setError(data.error);
+        }
+      })
+      .catch(() => {
+        setChatNotifications(previous);
+        setError("Impossible to connect to server");
+      });
+  };
+
   const bubbles = messages.map((message) => {
     // System logs (sabotage, bouclier) are centred, like an announcement
     if (message.type === "system") {
@@ -103,7 +134,18 @@ export default function LeagueChat({ leagueId }: Props) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>LE COIN CHAMBRAGE</Text>
+      <View style={styles.titleRow}>
+        <Text style={styles.title}>LE COIN CHAMBRAGE</Text>
+        {chatNotifications !== null && (
+          <TouchableOpacity onPress={toggleNotifications} hitSlop={10}>
+            <Ionicons
+              name={chatNotifications ? "notifications" : "notifications-off-outline"}
+              size={22}
+              color={chatNotifications ? colors.accent : colors.muted}
+            />
+          </TouchableOpacity>
+        )}
+      </View>
 
       <ScrollView
         ref={scrollRef}
@@ -139,14 +181,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  title: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: "900",
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingBottom: 12,
     borderBottomColor: colors.border,
     borderBottomWidth: 1,
+  },
+  title: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: "900",
   },
   messageRow: {
     flexDirection: "row",

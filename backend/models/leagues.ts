@@ -4,6 +4,8 @@ const memberSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: "users" },
   points: { type: Number, default: 0 },
   joinedAt: { type: Date, default: Date.now },
+  // Push for every chat message of this league — each member switches it on/off with the bell in the Chat tab
+  chatNotifications: { type: Boolean, default: true },
 });
 
 // One finished season of a private league: its dates and its podium (ties share a rank)

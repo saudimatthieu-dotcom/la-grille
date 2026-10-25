@@ -232,7 +232,7 @@ router.post("/test-push", (req, res) => {
     return;
   }
 
-  sendPush({ email: String(req.body.email).trim() }, kind)
+  sendPush({ email: String(req.body.email).trim() }, kind, NOTIFICATION_TEXTS[kind])
     .then(({ sent, removed }) => res.json({ result: true, sent, removed }))
     .catch(() => res.json({ result: false, error: "Expo push service unavailable" }));
 });

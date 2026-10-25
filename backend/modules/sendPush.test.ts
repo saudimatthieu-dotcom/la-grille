@@ -1,11 +1,11 @@
 import { buildMessages, chunk, deadTokens, NOTIFICATION_TEXTS } from "./sendPush";
-import type { PushMessage, PushTicket } from "./sendPush";
+import type { PushTicket } from "./sendPush";
 
 describe("buildMessages", () => {
   it("sends one message per device", () => {
     const users = [{ pushTokens: [{ token: "ExponentPushToken[phone]" }, { token: "ExponentPushToken[tablet]" }] }];
 
-    const messages = buildMessages(users, "newGrid");
+    const messages = buildMessages(users, "newGrid", NOTIFICATION_TEXTS.newGrid);
 
     expect(messages.map((message) => message.to)).toEqual(["ExponentPushToken[phone]", "ExponentPushToken[tablet]"]);
     expect(messages[0]).toMatchObject({ ...NOTIFICATION_TEXTS.newGrid, channelId: "default", data: { kind: "newGrid" } });
@@ -17,16 +17,33 @@ describe("buildMessages", () => {
       { pushTokens: [{ token: "ExponentPushToken[on]" }], notifications: { newGrid: true } },
     ];
 
-    expect(buildMessages(users, "newGrid").map((message) => message.to)).toEqual(["ExponentPushToken[on]"]);
-    expect(buildMessages(users, "results")).toHaveLength(2);
+    expect(buildMessages(users, "newGrid", NOTIFICATION_TEXTS.newGrid).map((message) => message.to)).toEqual([
+      "ExponentPushToken[on]",
+    ]);
+    expect(buildMessages(users, "results", NOTIFICATION_TEXTS.results)).toHaveLength(2);
   });
 
   it("counts a missing switch as on (accounts created before the switches)", () => {
-    expect(buildMessages([{ pushTokens: [{ token: "ExponentPushToken[old]" }] }], "closingSoon")).toHaveLength(1);
+    const users = [{ pushTokens: [{ token: "ExponentPushToken[old]" }] }];
+
+    expect(buildMessages(users, "closingSoon", NOTIFICATION_TEXTS.closingSoon)).toHaveLength(1);
   });
 
   it("sends nothing to users without a device", () => {
-    expect(buildMessages([{ pushTokens: [] }, {}, { pushTokens: [{ token: null }] }], "results")).toEqual([]);
+    const users = [{ pushTokens: [] }, {}, { pushTokens: [{ token: null }] }];
+
+    expect(buildMessages(users, "results", NOTIFICATION_TEXTS.results)).toEqual([]);
+  });
+
+  it("sends chat messages whatever the Profil switches, with the league to open on tap", () => {
+    const users = [
+      { pushTokens: [{ token: "ExponentPushToken[a]" }], notifications: { newGrid: false, closingSoon: false, results: false } },
+    ];
+
+    const messages = buildMessages(users, "message", { title: "COPAINS", body: "Paul : salut" }, { leagueId: "42", leagueName: "COPAINS" });
+
+    expect(messages).toHaveLength(1);
+    expect(messages[0].data).toEqual({ kind: "message", leagueId: "42", leagueName: "COPAINS" });
   });
 });
 
@@ -42,8 +59,9 @@ describe("chunk", () => {
 describe("deadTokens", () => {
   const messages = buildMessages(
     [{ pushTokens: [{ token: "ExponentPushToken[a]" }, { token: "ExponentPushToken[b]" }, { token: "ExponentPushToken[c]" }] }],
-    "results"
-  ) as PushMessage[];
+    "results",
+    NOTIFICATION_TEXTS.results
+  );
 
   it("finds the tokens of uninstalled apps, by position", () => {
     const tickets: PushTicket[] = [

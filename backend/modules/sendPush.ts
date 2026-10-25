@@ -1,9 +1,14 @@
 import User from "../models/users";
 
+// The 3 game notifications, each switched on/off in Profil
 export type NotificationKind = "newGrid" | "closingSoon" | "results";
+// + "message": a chat message — switched per league (League.members.chatNotifications), not in Profil
+export type PushKind = NotificationKind | "message";
 
-// What each notification says — the same sentences as the Profil switches (the client's wording)
-export const NOTIFICATION_TEXTS: Record<NotificationKind, { title: string; body: string }> = {
+export type PushText = { title: string; body: string };
+
+// What each game notification says — the same sentences as the Profil switches (the client's wording)
+export const NOTIFICATION_TEXTS: Record<NotificationKind, PushText> = {
   newGrid: { title: "Nouvelle grille", body: "Les matchs de la semaine sont choisis : à tes pronos !" },
   closingSoon: { title: "La grille va bientôt se fermer", body: "Il te reste des matchs à pronostiquer." },
   results: { title: "Les résultats sont arrivés", body: "Viens voir tes points de la semaine." },
@@ -20,6 +25,9 @@ type Recipient = {
   notifications?: Partial<Record<NotificationKind, boolean | null>> | null;
 };
 
+// Read by the app when the notification is tapped: a chat message opens that league's Chat tab
+export type PushData = { kind: PushKind; leagueId?: string; leagueName?: string };
+
 export type PushMessage = {
   to: string;
   title: string;
@@ -27,8 +35,7 @@ export type PushMessage = {
   sound: "default";
   // The channel registerPush creates on Android (iOS ignores it)
   channelId: "default";
-  // Read by the app when the notification is tapped
-  data: { kind: NotificationKind };
+  data: PushData;
 };
 
 // Expo's answer for one message, in the same order as the messages sent
@@ -36,14 +43,16 @@ export type PushTicket =
   | { status: "ok"; id: string }
   | { status: "error"; message: string; details?: { error?: string } };
 
-// One message per device of every user who left this notification on (no switch saved = on, the default)
+// One message per device of every user who left this notification on (no switch saved = on, the default).
+// Chat messages skip the Profil switches: the caller already kept only the members who left the league's bell on
 export function buildMessages(
   users: Recipient[],
-  kind: NotificationKind,
-  text = NOTIFICATION_TEXTS[kind]
+  kind: PushKind,
+  text: PushText,
+  extra: Omit<PushData, "kind"> = {}
 ): PushMessage[] {
   return users
-    .filter((user) => user.notifications?.[kind] !== false)
+    .filter((user) => kind === "message" || user.notifications?.[kind] !== false)
     .flatMap((user) => user.pushTokens ?? [])
     .filter((device): device is { token: string } => Boolean(device.token))
     .map((device) => ({
@@ -52,7 +61,7 @@ export function buildMessages(
       body: text.body,
       sound: "default",
       channelId: "default",
-      data: { kind },
+      data: { kind, ...extra },
     }));
 }
 
@@ -76,9 +85,14 @@ export function deadTokens(messages: PushMessage[], tickets: PushTicket[]): stri
 
 // Sends a notification to every user matching the filter (e.g. {} for everyone, { _id: { $in: ids } })
 // Answers how many messages were sent and how many dead tokens were removed
-export async function sendPush(filter: Record<string, unknown>, kind: NotificationKind, text = NOTIFICATION_TEXTS[kind]) {
+export async function sendPush(
+  filter: Record<string, unknown>,
+  kind: PushKind,
+  text: PushText,
+  extra: Omit<PushData, "kind"> = {}
+) {
   const users = await User.find(filter).select("pushTokens notifications").lean();
-  const messages = buildMessages(users, kind, text);
+  const messages = buildMessages(users, kind, text, extra);
   const dead: string[] = [];
 
   for (const batch of chunk(messages, BATCH_SIZE)) {

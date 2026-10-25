@@ -5,6 +5,7 @@ import League from "../models/leagues";
 import Message from "../models/messages";
 import User from "../models/users";
 import { checkBody } from "../modules/checkBody";
+import { notifyChat } from "../modules/chatPush";
 import { findBannedWord } from "../modules/moderation";
 import { PRIVATE_CATEGORIES, PUBLIC_CATEGORIES } from "../config/bannedWords";
 
@@ -59,8 +60,38 @@ router.get("/league/:leagueId/:token", (req, res) => {
       .limit(limit)
       .populate("user", "username avatar")
       .then((messages) => {
-        res.json({ result: true, messages: messages.reverse() });
+        // My bell in the Chat tab: do I get a push for each message of this league?
+        const me = context.league.members.find((member) => member.user?.equals(context.user._id));
+
+        res.json({ result: true, messages: messages.reverse(), chatNotifications: me?.chatNotifications !== false });
       });
+  });
+});
+
+// PUT /messages/league/:leagueId/notifications — switch the push for this league's chat on/off (the bell)
+router.put("/league/:leagueId/notifications", (req, res) => {
+  if (!checkBody(req.body, ["token"]) || typeof req.body.enabled !== "boolean") {
+    res.json({ result: false, error: "Missing or empty fields" });
+    return;
+  }
+
+  if (!mongoose.isValidObjectId(req.params.leagueId)) {
+    res.json({ result: false, error: "Invalid league id" });
+    return;
+  }
+
+  checkMember(req.body.token, req.params.leagueId).then((context) => {
+    if ("error" in context) {
+      res.json({ result: false, error: context.error });
+      return;
+    }
+
+    League.updateOne(
+      { _id: context.league._id, "members.user": context.user._id },
+      { $set: { "members.$.chatNotifications": req.body.enabled } }
+    ).then(() => {
+      res.json({ result: true, chatNotifications: req.body.enabled });
+    });
   });
 });
 
@@ -124,6 +155,9 @@ router.post("/league/:leagueId", (req, res) => {
       savedMessage.populate("user", "username avatar").then((populatedMessage) => {
         res.json({ result: true, message: populatedMessage });
       });
+
+      // After answering: the sender doesn't wait for the pushes, and a push failure never loses the message
+      notifyChat(context.league, context.user, text).catch((error) => console.log("Chat push failed:", error));
     });
   });
 });

@@ -1,7 +1,8 @@
+import { useEffect, useRef, useState } from "react";
 import { StatusBar } from "expo-status-bar";
 import * as Notifications from "expo-notifications";
 
-import { NavigationContainer } from "@react-navigation/native";
+import { NavigationContainer, StackActions, createNavigationContainerRef } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 
@@ -87,6 +88,9 @@ export type TabParamList = {
   Profil: undefined;
 };
 
+// Lets code outside the screens navigate — here, a tapped notification
+const navigationRef = createNavigationContainerRef<RootStackParamList>();
+
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<TabParamList>();
 
@@ -154,14 +158,55 @@ function RootNavigator() {
   );
 }
 
+// -------------------------- NOTIFICATION TAP -------------------------
+
+// A tapped chat notification opens that league's Chat tab — also when the tap launched the app
+function NotificationTapHandler({ isNavigationReady }: { isNavigationReady: boolean }) {
+  const token = useSelector((state: RootState) => state.user.value.token);
+  const response = Notifications.useLastNotificationResponse();
+  // The hook gives the same tap back on every render: each notification is handled once
+  const handledId = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!isNavigationReady || !token || !response) {
+      return;
+    }
+
+    const id = response.notification.request.identifier;
+
+    if (handledId.current === id || response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) {
+      return;
+    }
+
+    handledId.current = id;
+    // Otherwise the next launch would open the same chat again
+    Notifications.clearLastNotificationResponse();
+
+    const data = response.notification.request.content.data;
+
+    if (data?.kind === "message" && typeof data.leagueId === "string") {
+      // push (not navigate): opens the chat even when another league's screen is already open
+      navigationRef.dispatch(
+        StackActions.push("League", { leagueId: data.leagueId, leagueName: String(data.leagueName ?? ""), tab: "chat" })
+      );
+    }
+  }, [isNavigationReady, token, response]);
+
+  return null;
+}
+
 export default function App() {
+  // A notification can only open a screen once the navigator exists
+  const [isNavigationReady, setIsNavigationReady] = useState(false);
+
   return (
     <Provider store={store}>
       <PersistGate persistor={persistor}>
-        <NavigationContainer>
+        <NavigationContainer ref={navigationRef} onReady={() => setIsNavigationReady(true)}>
           <StatusBar style="light" />
           <RootNavigator />
         </NavigationContainer>
+        <NotificationTapHandler isNavigationReady={isNavigationReady} />
       </PersistGate>
     </Provider>
   );
