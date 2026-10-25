@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import type { ScrollViewInstance } from "react-native";
 import { useSelector } from "react-redux";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -23,7 +24,8 @@ export default function LeagueChat({ leagueId }: Props) {
   const [text, setText] = useState("");
   const [error, setError] = useState("");
 
-  const scrollRef = useRef<ScrollView>(null);
+  // Since React Native 0.88 ScrollView is a function component: the ref holds a ScrollViewInstance (scrollToEnd…)
+  const scrollRef = useRef<ScrollViewInstance>(null);
 
   // Loads the chat now, then every 10 seconds while the tab is open (leaving the tab stops it)
   useEffect(() => {
