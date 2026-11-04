@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { StyleSheet, Switch, Text, View } from "react-native";
 import { useSelector } from "react-redux";
 
 import type { RootState } from "../App";
 import { BONUSES } from "../config/bonuses";
 import TacticIcon from "./TacticIcon";
+import RewardedDoubleur from "./RewardedDoubleur";
 import { colors } from "../config/theme";
 import type { BonusKind } from "../types";
 import { maxPoints } from "../utils/format";
@@ -26,6 +27,8 @@ type LeagueStock = {
   leagueId: string;
   leagueName: string;
   stock: Record<BonusKind, number>;
+  // The "watch an ad = +1 Doubleur" button: still available this week in this league?
+  ad: { available: boolean; userId: string };
 };
 
 // The potential points, then one switch per bonus — the choice is saved with the prediction, in its league
@@ -35,6 +38,9 @@ export default function BonusBar({ sport, gridId, leagueId, predictionId, value,
   // undefined = still loading, null = the public league (no bonus)
   const [league, setLeague] = useState<LeagueStock | null | undefined>(leagueId ? undefined : null);
   const [error, setError] = useState("");
+  // +1 after a rewarded ad: reads the stock again to show the extra doubleur
+  const [refreshCount, setRefreshCount] = useState(0);
+  const refreshStock = useCallback(() => setRefreshCount((count) => count + 1), []);
 
   // What's left of my week's bonuses in this league (the public league has none: nothing to ask)
   useEffect(() => {
@@ -54,7 +60,7 @@ export default function BonusBar({ sport, gridId, leagueId, predictionId, value,
         }
       })
       .catch(() => setError("Impossible to connect to server"));
-  }, [gridId, leagueId, predictionId, token]);
+  }, [gridId, leagueId, predictionId, token, refreshCount]);
 
   const max = maxPoints(sport);
   const potential = value === "doubleur" ? max * 2 : max;
@@ -114,6 +120,9 @@ export default function BonusBar({ sport, gridId, leagueId, predictionId, value,
             {league.leagueName} · 1 bonus par prono · 1 de chaque par semaine
           </Text>
           <View style={styles.list}>{rows}</View>
+          {league.ad?.available && (
+            <RewardedDoubleur leagueId={league.leagueId} userId={league.ad.userId} onReward={refreshStock} />
+          )}
         </>
       )}
 

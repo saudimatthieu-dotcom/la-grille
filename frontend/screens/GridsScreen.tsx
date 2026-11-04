@@ -2,6 +2,7 @@ import { ScrollView, StyleSheet, Text } from "react-native";
 
 import { colors } from "../config/theme";
 import WeekGrid from "../components/WeekGrid";
+import AdBanner from "../components/AdBanner";
 
 // The Grille tab: the general grid, open to every player — no league or code needed
 export default function GridsScreen() {
@@ -11,6 +12,8 @@ export default function GridsScreen() {
       <Text style={styles.subtitle}>Toutes les rencontres de la semaine</Text>
 
       <WeekGrid />
+
+      <AdBanner />
     </ScrollView>
   );
 }

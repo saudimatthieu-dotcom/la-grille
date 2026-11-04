@@ -14,6 +14,7 @@ import { splitTacticText } from "../config/bonuses";
 import Avatar from "../components/Avatar";
 import ProgressBar from "../components/ProgressBar";
 import TacticIcon from "../components/TacticIcon";
+import AdBanner from "../components/AdBanner";
 import { ordinal } from "../utils/format";
 import { registerPush } from "../utils/registerPush";
 
@@ -183,6 +184,8 @@ export default function HomeScreen({ navigation }: Props) {
           <Ionicons name="chevron-forward" size={20} color={colors.muted} />
         </TouchableOpacity>
       )}
+
+      <AdBanner />
     </ScrollView>
   );
 }

@@ -12,6 +12,7 @@ import { getSeason, getWeek } from "../modules/getWeek";
 import { findSabotages } from "../modules/leaguePoints";
 import { buildRanking } from "../modules/ranking";
 import { bonusStock, findWeekBonuses } from "../modules/bonus";
+import { canEarnAdReward, countWeekAdRewards } from "../modules/adRewards";
 import { findPlayerLeague } from "../modules/publicLeague";
 import { seasonState } from "../modules/seasons";
 
@@ -54,10 +55,20 @@ router.get("/bonus/:gridId/:token", (req, res) => {
         return;
       }
 
-      findWeekBonuses(user._id, league._id, grid.season, grid.week).then((tactics) => {
+      Promise.all([
+        findWeekBonuses(user._id, league._id, grid.season, grid.week),
+        countWeekAdRewards(user._id, league._id, grid.season, grid.week),
+      ]).then(([tactics, adDoubleurs]) => {
         res.json({
           result: true,
-          league: { leagueId: league._id, leagueName: league.name, stock: bonusStock(tactics, predictionId) },
+          league: {
+            leagueId: league._id,
+            leagueName: league.name,
+            stock: bonusStock(tactics, predictionId, adDoubleurs),
+            // The "watch an ad = +1 Doubleur" button: still available this week? userId goes with the ad to Google,
+            // which sends it back to /ads/reward signed
+            ad: { available: canEarnAdReward(adDoubleurs), userId: String(user._id) },
+          },
         });
       });
     });

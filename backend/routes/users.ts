@@ -115,9 +115,12 @@ router.post("/forgot-password", (req, res) => {
     user.resetAttempts = 0;
 
     user.save().then(() => {
-      sendResetCode(user.email, code).then(() => {
-        res.json({ result: true });
-      });
+      sendResetCode(user.email, code)
+        .then(() => {
+          res.json({ result: true });
+        })
+        // Without this, an email service down leaves the app waiting with no answer
+        .catch(() => res.json({ result: false, error: "Could not send the email, try again later" }));
     });
   });
 });

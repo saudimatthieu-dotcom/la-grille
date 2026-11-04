@@ -25,14 +25,16 @@ export function findWeekBonuses(
 }
 
 // What's left of my week's bonuses: 1 of each minus what I already used — nothing is stored, so nothing piles up.
-// The bonus already on this prediction doesn't count: saving the prediction again gives it back first
-export function bonusStock(tactics: BonusTactic[], predictionId?: unknown) {
+// The bonus already on this prediction doesn't count: saving the prediction again gives it back first.
+// adDoubleurs: the extra doubleurs earned this week by watching a rewarded ad (modules/adRewards.ts)
+export function bonusStock(tactics: BonusTactic[], predictionId?: unknown, adDoubleurs = 0) {
   const used = tactics.filter((tactic) => !predictionId || String(tactic.prediction) !== String(predictionId));
 
   const stock = { doubleur: 0, assurance: 0, bouclier: 0 };
   BONUS_KINDS.forEach((kind) => {
     stock[kind] = BONUS_PER_WEEK - used.filter((tactic) => tactic.kind === kind).length;
   });
+  stock.doubleur += adDoubleurs;
 
   return stock;
 }

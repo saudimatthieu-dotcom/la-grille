@@ -63,6 +63,9 @@ Environment variables:
 | `ADMIN_SECRET`      | secret for the admin and cron routes |
 | `THESPORTSDB_KEY`   | TheSportsDB API key — optional, defaults to the free test key `123` (the old `3` is disabled) |
 | `TZ`                | `Europe/Paris` on the host — weeks start Monday 00:00 and "Nouvelle grille" goes out at 8:00 in this time zone |
+| `BREVO_API_KEY`     | Brevo API key for the "forgot password" emails — without it the code is printed in the server logs |
+| `MAIL_FROM`         | sender address of those emails, verified in Brevo (Senders & IP → Senders) |
+| `ADS_TEST_REWARDS`  | `true` = the app may grant the ad doubleur after Google's **test** ads (which never call the server). Keep `false` once real ads are live |
 
 Run the tests with `npm test`.
 
@@ -76,6 +79,19 @@ npx expo start
 ```
 
 Push notifications need a development build (`expo-dev-client`), not Expo Go.
+
+## Ads (AdMob)
+
+Banners on Accueil and Grille, and a rewarded video in the bonus bar (+1 Doubleur per league per week). VIP members see no banner.
+Until the steps below are done, the app shows Google's **test** ads.
+
+1. Create the app in the [AdMob console](https://admob.google.com) (Android, then iOS), and two ad units: an **adaptive banner** and a **rewarded** one.
+2. Replace Google's test app ids in `frontend/app.json` (`react-native-google-mobile-ads` plugin) with La Grille's, then rebuild the app.
+3. Put the ad unit ids in the EAS `preview` environment: `EXPO_PUBLIC_ADMOB_BANNER_ID`, `EXPO_PUBLIC_ADMOB_REWARDED_ID`.
+4. On the rewarded ad unit: **Server-side verification** → callback URL `https://la-grille-api.onrender.com/ads/reward`. The doubleur is only granted when Google calls this URL with a valid signature.
+5. **Privacy & messaging** → create a **GDPR** message (consent form shown to players in Europe).
+6. **Blocking controls** → block the sensitive categories *Gambling & betting*, *Dating*, and adult content (the app already caps ads at PG).
+7. AdMob only serves real ads to apps published on Google Play / the App Store, with an `app-ads.txt` file on the app's website.
 
 ## Data licences
 

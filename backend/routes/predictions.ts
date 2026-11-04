@@ -16,6 +16,7 @@ import { findPlayerLeague } from "../modules/publicLeague";
 import { BONUS_KINDS, pointsInLeague } from "../modules/scoring";
 import type { BonusKind } from "../modules/scoring";
 import { bonusError, bonusStock, findWeekBonuses, saveBonus } from "../modules/bonus";
+import { countWeekAdRewards } from "../modules/adRewards";
 
 const router = express.Router();
 
@@ -111,10 +112,14 @@ router.post("/", (req, res) => {
         }
 
         // The bonus is checked BEFORE anything is saved: a refused bonus doesn't leave a prediction saved without it
-        Promise.all([Prediction.findOne(filter), findWeekBonuses(user._id, league._id, grid.season, grid.week)]).then(
-          ([existing, tactics]) => {
+        Promise.all([
+          Prediction.findOne(filter),
+          findWeekBonuses(user._id, league._id, grid.season, grid.week),
+          countWeekAdRewards(user._id, league._id, grid.season, grid.week),
+        ]).then(
+          ([existing, tactics, adDoubleurs]) => {
             const error = bonus
-              ? bonusError(bonus, league.isPublic, event.sport ?? "", bonusStock(tactics, existing?._id))
+              ? bonusError(bonus, league.isPublic, event.sport ?? "", bonusStock(tactics, existing?._id, adDoubleurs))
               : null;
 
             if (error) {

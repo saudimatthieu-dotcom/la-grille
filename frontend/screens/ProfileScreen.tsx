@@ -16,6 +16,7 @@ import TacticIcon from "../components/TacticIcon";
 import { login, logout } from "../reducers/user";
 import type { NotificationKind, NotificationSettings } from "../types";
 import { useMe } from "../utils/useMe";
+import { useAdPrivacyOptions } from "../utils/ads";
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<TabParamList, "Profil">,
@@ -27,6 +28,7 @@ export default function ProfileScreen({ navigation }: Props) {
   const user = useSelector((state: RootState) => state.user.value);
   // The VIP and admin status, from the server
   const me = useMe();
+  const adPrivacy = useAdPrivacyOptions();
 
   const [username, setUsername] = useState(user.username ?? "");
   const [message, setMessage] = useState("");
@@ -192,6 +194,13 @@ export default function ProfileScreen({ navigation }: Props) {
         </View>
       ))}
 
+      {/* Required by Google in Europe: change the choice made in the ads consent form */}
+      {adPrivacy.isRequired && (
+        <TouchableOpacity onPress={adPrivacy.open}>
+          <Text style={styles.adPrivacy}>Gérer mes choix de pub</Text>
+        </TouchableOpacity>
+      )}
+
       <TouchableOpacity style={styles.logout} onPress={handleLogout}>
         <Text style={styles.logoutText}>Se déconnecter</Text>
       </TouchableOpacity>
@@ -354,6 +363,13 @@ const styles = StyleSheet.create({
     color: colors.accent,
     fontSize: 16,
     fontWeight: "800",
+  },
+  adPrivacy: {
+    color: colors.muted,
+    fontSize: 14,
+    textDecorationLine: "underline",
+    textAlign: "center",
+    marginTop: 24,
   },
   hint: {
     color: colors.muted,
