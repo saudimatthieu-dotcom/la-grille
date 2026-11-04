@@ -28,7 +28,8 @@ function isOver(event: EventDoc) {
 }
 
 // Posts the week's recap in the chat of every private league that played it — once per week:
-// when the week is over (Monday) and all its matches are finished, then the grid is marked "scored"
+// when the week is over (Monday) and all its matches are finished, then the grid is marked "scored".
+// Gives back the grids closed this time
 export function postWeeklyRecaps() {
   return Grid.find({ status: { $ne: "scored" } })
     .populate<{ events: EventDoc[] }>("events")
@@ -76,6 +77,7 @@ export function postWeeklyRecaps() {
         )
       );
 
-      return Promise.all(recaps).then(() => finishedGrids.length);
+      // The weeks closed in this run: /admin/score then sends their "results" notification
+      return Promise.all(recaps).then(() => finishedGrids);
     });
 }

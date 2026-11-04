@@ -21,6 +21,7 @@ import { fetchRacePodium } from "../providers/jolpica";
 import { IMPORT_DAYS, importUpcomingEvents } from "../modules/importEvents";
 import { NOTIFICATION_TEXTS, sendPush } from "../modules/sendPush";
 import type { NotificationKind } from "../modules/sendPush";
+import { notifyClosingSoon, notifyNewGrid, notifyResults } from "../modules/gamePush";
 
 const router = express.Router();
 
@@ -173,9 +174,21 @@ router.post("/score", (req, res) => {
               // Then: a finished week gets its recap in each league's chat (only once, see weeklyRecap.ts),
               // finished seasons close (seasons.ts) and last month's #1 of the public league wins (monthlyPrize.ts)
               .then(() => Promise.all([postWeeklyRecaps(), finishSeasons(), awardMonthlyPrize()]))
-              .then(([recaps, seasonsClosed, monthlyWinners]) => {
-                res.json({ result: true, scored: predictions.length, recaps, seasonsClosed, monthlyWinners });
-              });
+              .then(([recapGrids, seasonsClosed, monthlyWinners]) =>
+                // The weeks closed just now: their players get the "results" notification (a push failure doesn't fail the scoring)
+                notifyResults(recapGrids)
+                  .catch(() => 0)
+                  .then((resultsPushed) => {
+                    res.json({
+                      result: true,
+                      scored: predictions.length,
+                      recaps: recapGrids.length,
+                      seasonsClosed,
+                      monthlyWinners,
+                      resultsPushed,
+                    });
+                  })
+              );
           });
         });
       });
@@ -210,6 +223,19 @@ router.post("/make-admin", (req, res) => {
 
     res.json({ result: true, username: user.username, isAdmin: user.isAdmin });
   });
+});
+
+// POST /admin/notify — the "new grid" and "closing soon" notifications (cron-job.org, every hour).
+// Safe to call as often as wanted: each one reaches a player once per week (modules/gamePush.ts)
+router.post("/notify", (req, res) => {
+  if (!isAdmin(req.body.secret)) {
+    res.json({ result: false, error: "Forbidden" });
+    return;
+  }
+
+  Promise.all([notifyNewGrid(), notifyClosingSoon()])
+    .then(([newGrid, closingSoon]) => res.json({ result: true, newGrid, closingSoon }))
+    .catch(() => res.json({ result: false, error: "Expo push service unavailable" }));
 });
 
 // POST /admin/test-push — sends one notification to one account, to check push works end to end (by hand, with the secret)

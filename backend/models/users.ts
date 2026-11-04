@@ -24,6 +24,12 @@ const userSchema = new mongoose.Schema({
     closingSoon: { type: Boolean, default: true },
     results: { type: Boolean, default: true },
   },
+  // The last week ("2026-45") each game notification was sent for: never twice the same week (modules/gamePush.ts)
+  pushSent: {
+    newGrid: { type: String, default: null },
+    closingSoon: { type: String, default: null },
+    results: { type: String, default: null },
+  },
   createdAt: { type: Date, default: Date.now },
 });
 

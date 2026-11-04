@@ -3,6 +3,7 @@ import { StatusBar } from "expo-status-bar";
 import * as Notifications from "expo-notifications";
 
 import { NavigationContainer, StackActions, createNavigationContainerRef } from "@react-navigation/native";
+import type { NavigatorScreenParams } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 
@@ -64,7 +65,8 @@ export type RootStackParamList = {
   SignUp: undefined;
   SignIn: undefined;
   ForgotPassword: undefined;
-  MainTabs: undefined;
+  // screen: the tab to open — e.g. Grille when a game notification is tapped
+  MainTabs: NavigatorScreenParams<TabParamList> | undefined;
   CreateLeague: undefined;
   // tab: the tab to open (Grille by default) — e.g. the chat from the home screen news
   League: { leagueId: string; leagueName: string; tab?: LeagueTab };
@@ -160,7 +162,8 @@ function RootNavigator() {
 
 // -------------------------- NOTIFICATION TAP -------------------------
 
-// A tapped chat notification opens that league's Chat tab — also when the tap launched the app
+// A tapped notification opens its screen — also when the tap launched the app:
+// a chat message → that league's Chat tab, a game notification → the Grille tab
 function NotificationTapHandler({ isNavigationReady }: { isNavigationReady: boolean }) {
   const token = useSelector((state: RootState) => state.user.value.token);
   const response = Notifications.useLastNotificationResponse();
@@ -189,6 +192,12 @@ function NotificationTapHandler({ isNavigationReady }: { isNavigationReady: bool
       navigationRef.dispatch(
         StackActions.push("League", { leagueId: data.leagueId, leagueName: String(data.leagueName ?? ""), tab: "chat" })
       );
+      return;
+    }
+
+    // New grid, closing soon, results: the week's grid, in the Grille tab
+    if (data?.kind === "newGrid" || data?.kind === "closingSoon" || data?.kind === "results") {
+      navigationRef.navigate("MainTabs", { screen: "Grille" });
     }
   }, [isNavigationReady, token, response]);
 
