@@ -2,7 +2,8 @@
 import type { Competition } from "../config/competitions";
 
 const BASE_URL = "https://www.thesportsdb.com/api/v1/json";
-const API_KEY = process.env.THESPORTSDB_KEY ?? "3"; // "3" = free test key
+// "123" = the free test key (the old "3" answers 403 since autumn 2026) — a premium key goes in THESPORTSDB_KEY
+const API_KEY = process.env.THESPORTSDB_KEY || "123";
 
 // Statuses TheSportsDB uses for a finished match
 const FINISHED_STATUSES = ["FT", "AOT", "AET", "PEN", "Match Finished"];
@@ -40,11 +41,18 @@ function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-// One call to the API, after a pause — the import makes its calls one after the other
+// One call to the API, after a pause — the import and the results make their calls one after the other.
+// A refusal (403 dead key, 429 too many calls) answers text, not JSON: we say so instead of a JSON parse error
 function callApi(path: string) {
   return wait(CALL_GAP_MS)
     .then(() => fetch(`${BASE_URL}/${API_KEY}/${path}`))
-    .then((response) => response.json() as Promise<ApiResponse>)
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`TheSportsDB answered ${response.status}`);
+      }
+
+      return response.json() as Promise<ApiResponse>;
+    })
     .then((data) => data.events ?? []);
 }
 
@@ -143,10 +151,10 @@ export function fetchEventsUntil(competition: Competition, until: Date) {
 
 // Final score of one event, or null if it isn't finished yet
 export function fetchEventResult(externalId: string) {
-  return fetch(`${BASE_URL}/${API_KEY}/lookupevent.php?id=${externalId}`)
-    .then((response) => response.json() as Promise<ApiResponse>)
-    .then((data) => {
-      const event = data.events?.[0];
+  // callApi: the 2.1 s pause keeps us under the 30 calls a minute
+  return callApi(`lookupevent.php?id=${externalId}`)
+    .then((events) => {
+      const event = events[0];
 
       if (
         !event ||

@@ -54,41 +54,73 @@ function sendImport(res: express.Response) {
     .catch(() => res.json({ result: false, error: "Sports API unavailable" }));
 }
 
-// POST /admin/sync-results — fetches the final result of every event that has started
-router.post("/sync-results", (req, res) => {
+// At most this many matches per call: TheSportsDB's free key allows 30 calls a minute (2.1 s pause before each),
+// and cron-job.org waits 30 s for the answer → 12 × 2.1 s ≈ 25 s. Called every hour: 288 matches a day
+const RESULTS_PER_CALL = 12;
+// A match is looked up 2 h after kick-off: before that it's still being played
+const MATCH_LENGTH_MS = 2 * 60 * 60 * 1000;
+
+function fetchResult(event: InstanceType<typeof Event>): Promise<Result | null> {
+  const externalId = event.externalId ?? "";
+
+  if (event.provider === "thesportsdb") {
+    return fetchEventResult(externalId);
+  }
+
+  if (event.provider === "jolpica") {
+    return fetchRacePodium(externalId);
+  }
+
+  return Promise.resolve(null);
+}
+
+// POST /admin/sync-results — fetches the final result of the matches that should be over (cron-job.org, every hour).
+// Answers how many were checked, finished, failed, and how many are still waiting
+router.post("/sync-results", async (req, res) => {
   if (!isAdmin(req.body.secret)) {
     res.json({ result: false, error: "Forbidden" });
     return;
   }
 
-  Event.find({ status: "scheduled", startsAt: { $lt: new Date() } })
-    .then((events) => {
-      const updates = events.map((event) => {
-        const externalId = event.externalId ?? "";
-        let request: Promise<Result | null> = Promise.resolve(null);
+  const filter = { status: "scheduled" as const, startsAt: { $lt: new Date(Date.now() - MATCH_LENGTH_MS) } };
 
-        if (event.provider === "thesportsdb") {
-          request = fetchEventResult(externalId);
-        } else if (event.provider === "jolpica") {
-          request = fetchRacePodium(externalId);
-        }
+  try {
+    // Newest first: an old match that never gets a result (postponed…) never blocks the others
+    const events = await Event.find(filter).sort({ startsAt: -1 }).limit(RESULTS_PER_CALL);
+    let finished = 0;
+    let failed = 0;
 
-        return request.then((result) => {
-          if (!result) {
-            return false; // not finished yet: we'll try again at the next call
-          }
+    // One after the other, never all at once: the API refuses bursts
+    for (const event of events) {
+      try {
+        const result = await fetchResult(event);
 
+        if (result) {
           event.status = "finished";
           event.result = result;
-          return event.save().then(() => true);
-        });
-      });
+          await event.save();
+          finished++;
+        }
+        // null: not finished yet, we'll try again at the next call
+      } catch (error) {
+        // One failed match doesn't stop the others
+        console.log("sync-results:", event.provider, event.externalId, String(error));
+        failed++;
+      }
+    }
 
-      return Promise.all(updates).then((finished) => {
-        res.json({ result: true, finished: finished.filter((done) => done).length });
-      });
-    })
-    .catch(() => res.json({ result: false, error: "Sports API unavailable" }));
+    const waiting = await Event.countDocuments(filter);
+
+    // Every call failed: the API itself is down (or the key is dead) — cron-job.org should show it
+    if (events.length > 0 && failed === events.length) {
+      res.json({ result: false, error: "Sports API unavailable", waiting });
+      return;
+    }
+
+    res.json({ result: true, checked: events.length, finished, failed, waiting });
+  } catch {
+    res.json({ result: false, error: "Database unavailable" });
+  }
 });
 
 // POST /admin/score — gives points to every prediction of a finished event, once

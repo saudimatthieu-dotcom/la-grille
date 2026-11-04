@@ -1,4 +1,17 @@
-import { firstLock, isClosingSoonTime, isNewGridTime, missingPlayers, weekKey } from "./gamePush";
+import { firstLock, isClosingSoonTime, isFreshWeek, isNewGridTime, missingPlayers, weekKey } from "./gamePush";
+
+describe("isFreshWeek", () => {
+  // Week 44 of 2026 = Monday 26 October → Sunday 1 November
+  it("is news during the 7 days after the week's end", () => {
+    expect(isFreshWeek(2026, 44, new Date(2026, 10, 2, 10))).toBe(true);
+    expect(isFreshWeek(2026, 44, new Date(2026, 10, 8, 23))).toBe(true);
+  });
+
+  it("isn't news any more after that (a backlog caught up late)", () => {
+    expect(isFreshWeek(2026, 44, new Date(2026, 10, 9, 0))).toBe(false);
+    expect(isFreshWeek(2026, 41, new Date(2026, 10, 4))).toBe(false);
+  });
+});
 
 describe("weekKey", () => {
   it("joins the season and the week", () => {

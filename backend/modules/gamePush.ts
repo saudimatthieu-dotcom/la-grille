@@ -4,6 +4,7 @@ import Event from "../models/events";
 import League from "../models/leagues";
 import Prediction from "../models/predictions";
 import User from "../models/users";
+import { getWeekStart } from "./getWeek";
 import { isPlayed } from "./gridTypes";
 import { seasonState } from "./seasons";
 import { findPicked, findWeekEvents, weekFromNow } from "./selections";
@@ -155,11 +156,22 @@ export async function notifyClosingSoon() {
   return sendOncePerWeek(unique(perLeague.flat()), "closingSoon", weekKey(season, week));
 }
 
+// A week closed more than this after its end isn't news any more (e.g. results caught up late): no "results" push
+export const RESULTS_FRESH_DAYS = 7;
+
+// Did the week end less than RESULTS_FRESH_DAYS ago?
+export function isFreshWeek(season: number, week: number, now: Date) {
+  const tooLate = getWeekStart(season, week);
+  tooLate.setDate(tooLate.getDate() + 7 + RESULTS_FRESH_DAYS);
+  return now < tooLate;
+}
+
 // results: the weeks postWeeklyRecaps just closed (all their matches over and scored), to everyone who predicted there
 export async function notifyResults(grids: { _id: mongoose.Types.ObjectId; season?: number | null; week?: number | null }[]) {
+  const now = new Date();
   let sent = 0;
 
-  for (const grid of grids) {
+  for (const grid of grids.filter((item) => isFreshWeek(item.season ?? 0, item.week ?? 0, now))) {
     const userIds = await Prediction.distinct("user", { grid: grid._id });
     sent += await sendOncePerWeek(userIds.map(String), "results", weekKey(grid.season ?? 0, grid.week ?? 0));
   }

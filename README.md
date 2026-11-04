@@ -61,7 +61,7 @@ Environment variables:
 | `CONNECTION_STRING` | MongoDB connection string |
 | `PORT`              | API port (default `3000`) |
 | `ADMIN_SECRET`      | secret for the admin and cron routes |
-| `THESPORTSDB_KEY`   | TheSportsDB API key |
+| `THESPORTSDB_KEY`   | TheSportsDB API key — optional, defaults to the free test key `123` (the old `3` is disabled) |
 | `TZ`                | `Europe/Paris` on the host — weeks start Monday 00:00 and "Nouvelle grille" goes out at 8:00 in this time zone |
 
 Run the tests with `npm test`.
