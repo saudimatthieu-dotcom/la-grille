@@ -20,9 +20,27 @@ type Props = {
 const REFRESH_DELAYS_MS = [3000, 8000];
 
 // "Watch an ad (30 s) = +1 Doubleur this week, in this league" — the doubleur is granted by the server, not here
-export default function RewardedDoubleur({ leagueId, userId, onReward }: Props) {
-  const token = useSelector((state: RootState) => state.user.value.token);
+export default function RewardedDoubleur(props: Props) {
   const ads = useAds();
+
+  // No ad is even created before consent (or if the player refused ads)
+  if (!ads?.canRequestAds) {
+    return null;
+  }
+
+  // Mounted only once consent is known: its request options are final from the start.
+  // Changing them right after mount crashed the app ("ad has been destroyed"): the library
+  // destroyed the first ad while still attaching its listener to it
+  return <RewardedDoubleurButton {...props} nonPersonalizedOnly={ads.nonPersonalizedOnly} />;
+}
+
+function RewardedDoubleurButton({
+  leagueId,
+  userId,
+  onReward,
+  nonPersonalizedOnly,
+}: Props & { nonPersonalizedOnly: boolean }) {
+  const token = useSelector((state: RootState) => state.user.value.token);
   const [message, setMessage] = useState("");
   const handled = useRef(false);
 
@@ -30,16 +48,14 @@ export default function RewardedDoubleur({ leagueId, userId, onReward }: Props) 
   const requestOptions = useMemo(
     () => ({
       serverSideVerificationOptions: { userId, customData: leagueId },
-      requestNonPersonalizedAdsOnly: ads?.nonPersonalizedOnly ?? true,
+      requestNonPersonalizedAdsOnly: nonPersonalizedOnly,
     }),
-    [userId, leagueId, ads?.nonPersonalizedOnly]
+    [userId, leagueId, nonPersonalizedOnly]
   );
 
   const { status, show, retry, earnedReward } = useRewardedAd({
     adUnitId: REWARDED_UNIT_ID,
     requestOptions,
-    // No ad is even loaded before consent (or if the player refused ads)
-    autoLoad: Boolean(ads?.canRequestAds),
   });
 
   // The ad was watched to the end
@@ -70,10 +86,6 @@ export default function RewardedDoubleur({ leagueId, userId, onReward }: Props) 
         REFRESH_DELAYS_MS.forEach((delay) => setTimeout(onReward, delay));
       });
   }, [earnedReward, leagueId, token, onReward]);
-
-  if (!ads?.canRequestAds) {
-    return null;
-  }
 
   if (message) {
     return <Text style={styles.message}>{message}</Text>;
