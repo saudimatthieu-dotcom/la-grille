@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from "react-native";
 import type { CompositeScreenProps } from "@react-navigation/native";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -35,6 +35,9 @@ export default function ProfileScreen({ navigation }: Props) {
   const [error, setError] = useState("");
   // The notification switches: null until the server has answered
   const [notifications, setNotifications] = useState<NotificationSettings | null>(null);
+  // Account deletion: the password field only appears once the user has confirmed the warning
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
 
   useEffect(() => {
     if (me) {
@@ -97,6 +100,39 @@ export default function ProfileScreen({ navigation }: Props) {
   const handleLogout = () => {
     dispatch(logout());
     navigation.navigate("Welcome");
+  };
+
+  // Step 1: the warning. Only "Continuer" shows the password field
+  const askDeleteAccount = () => {
+    Alert.alert(
+      "Supprimer mon compte ?",
+      "C'est définitif : tes pronos, tes bonus et tes messages seront effacés, et tu quittes toutes tes ligues. " +
+        "Les ligues que tu as créées passent au joueur arrivé après toi (ou disparaissent si tu es seul).",
+      [
+        { text: "Annuler", style: "cancel" },
+        { text: "Continuer", style: "destructive", onPress: () => setConfirmingDelete(true) },
+      ]
+    );
+  };
+
+  // Step 2: the server checks the password, deletes everything, then we log out
+  const deleteAccount = () => {
+    setError("");
+
+    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/users/me`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: user.token, password: deletePassword }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.result) {
+          handleLogout();
+        } else {
+          setError(data.error === "Wrong password" ? "Mot de passe incorrect" : data.error);
+        }
+      })
+      .catch(() => setError("Impossible de contacter le serveur"));
   };
 
   const avatarChoices = AVATARS.map((avatar) => (
@@ -204,6 +240,29 @@ export default function ProfileScreen({ navigation }: Props) {
       <TouchableOpacity style={styles.logout} onPress={handleLogout}>
         <Text style={styles.logoutText}>Se déconnecter</Text>
       </TouchableOpacity>
+
+      <TouchableOpacity onPress={askDeleteAccount}>
+        <Text style={styles.deleteLink}>Supprimer mon compte</Text>
+      </TouchableOpacity>
+
+      {confirmingDelete && (
+        <View style={styles.deleteBox}>
+          <Text style={styles.deleteHint}>Pour confirmer, entre ton mot de passe :</Text>
+          <TextInput
+            style={styles.input}
+            value={deletePassword}
+            onChangeText={setDeletePassword}
+            secureTextEntry
+            autoCapitalize="none"
+            placeholder="Mot de passe"
+            placeholderTextColor={colors.muted}
+          />
+          <TouchableOpacity style={styles.deleteButton} onPress={deleteAccount} disabled={deletePassword === ""}>
+            <Text style={styles.deleteButtonText}>Supprimer définitivement</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
     </ScrollView>
   );
 }
@@ -413,5 +472,32 @@ const styles = StyleSheet.create({
     color: colors.danger,
     fontSize: 15,
     fontWeight: "700",
+  },
+  deleteLink: {
+    color: colors.danger,
+    fontSize: 14,
+    textDecorationLine: "underline",
+    textAlign: "center",
+    marginTop: 24,
+  },
+  deleteBox: {
+    gap: 10,
+    marginTop: 16,
+  },
+  deleteHint: {
+    color: colors.muted,
+    fontSize: 14,
+    textAlign: "center",
+  },
+  deleteButton: {
+    backgroundColor: colors.danger,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  deleteButtonText: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: "800",
   },
 });
