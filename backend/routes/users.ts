@@ -16,6 +16,7 @@ import type { BonusKind } from "../modules/scoring";
 import { sendResetCode } from "../modules/sendResetCode";
 import { computeStats } from "../modules/stats";
 import { isVip } from "../modules/vip";
+import { deleteUserData } from "../modules/deleteAccount";
 
 const RESET_CODE_MINUTES = 15;
 const RESET_MAX_ATTEMPTS = 5;
@@ -357,6 +358,34 @@ router.put("/me/notifications", (req, res) => {
     user.save().then((savedUser) => {
       res.json({ result: true, notifications: savedUser.notifications });
     });
+  });
+});
+
+// DELETE /users/me — deletes my account (RGPD + Google Play). The password is asked again:
+// someone holding my unlocked phone must not be able to delete it
+router.delete("/me", (req, res) => {
+  if (!checkBody(req.body, ["token", "password"])) {
+    res.json({ result: false, error: "Missing or empty fields" });
+    return;
+  }
+
+  User.findOne({ token: req.body.token }).then((user) => {
+    if (!user) {
+      res.json({ result: false, error: "User not found" });
+      return;
+    }
+
+    if (!bcrypt.compareSync(req.body.password, user.password)) {
+      res.json({ result: false, error: "Wrong password" });
+      return;
+    }
+
+    // Their data in the other collections first, then the account itself
+    deleteUserData(user._id)
+      .then(() => User.deleteOne({ _id: user._id }))
+      .then(() => {
+        res.json({ result: true });
+      });
   });
 });
 
