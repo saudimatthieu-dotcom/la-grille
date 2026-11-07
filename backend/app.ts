@@ -15,6 +15,7 @@ import tacticsRouter from "./routes/tactics";
 import messagesRouter from "./routes/messages";
 import picksRouter from "./routes/picks";
 import adsRouter from "./routes/ads";
+import legalRouter from "./routes/legal";
 
 const app = express();
 
@@ -38,5 +39,6 @@ app.use("/tactics", tacticsRouter);
 app.use("/messages", messagesRouter);
 app.use("/picks", picksRouter);
 app.use("/ads", adsRouter);
+app.use("/legal", legalRouter);
 
 export default app;
