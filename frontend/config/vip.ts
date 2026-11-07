@@ -6,7 +6,7 @@ export const DEFAULT_SEASON_WEEKS = 10;
 export const MIN_SEASON_WEEKS = 4;
 export const MAX_SEASON_WEEKS = 30;
 
-// What the VIP pass gives (the client's list — no ads to remove yet)
+// What the VIP pass gives (the client's list) — features only, never points or bonuses (legal reasons, see backend/modules/vip.ts)
 export const VIP_PERKS: {
   icon: "options-outline" | "stats-chart-outline" | "people-outline" | "calendar-outline";
   title: string;

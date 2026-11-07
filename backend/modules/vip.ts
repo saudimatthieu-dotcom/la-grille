@@ -1,6 +1,7 @@
 // The VIP pass (client's list): sur-mesure grid (choose your matches), Stats screen, leagues with no player limit,
-// the season length of their leagues (4 to 30 weeks, see seasons.ts).
-// No ads to remove yet.
+// the season length of their leagues (4 to 30 weeks, see seasons.ts), and no ad banners.
+// VIP never gives points or bonuses (decided 2026-11-06, legal reasons): paying must not raise the chance
+// of winning a prize. VIPs may still watch the optional rewarded ad for the extra doubleur, like everyone.
 
 // A league whose owner isn't VIP stops at this many players
 export const FREE_LEAGUE_MAX_MEMBERS = 10;
