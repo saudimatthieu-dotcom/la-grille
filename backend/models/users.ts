@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema({
   username: { type: String, unique: true, required: true },
-  email: { type: String, unique: true, required: true },
+  email: { type: String, unique: true, required: true, lowercase: true, trim: true },
   password: { type: String, required: true },
   token: String,
   avatar: String,
@@ -12,6 +12,8 @@ const userSchema = new mongoose.Schema({
   isAdmin: { type: Boolean, default: false },
   // VIP pass: active until this date (null: never had it) — given by an admin until in-app payment exists
   vipUntil: { type: Date, default: null },
+  // Proof of consent (RGPD): when the user ticked "15 ans ou plus + CGU" at sign-up — null for the testers who signed up before the box existed
+  termsAcceptedAt: { type: Date, default: null },
   // Forgot password: the 6-digit code is stored hashed (like the password), valid 15 min, 5 tries max
   resetCode: { type: String, default: null },
   resetExpires: { type: Date, default: null },

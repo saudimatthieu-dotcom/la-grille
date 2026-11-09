@@ -1,12 +1,15 @@
 import { useState } from "react";
 import {
   KeyboardAvoidingView,
+  Linking,
   Platform,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useDispatch } from "react-redux";
 
@@ -16,6 +19,9 @@ import { colors } from "../config/theme";
 
 type Props = NativeStackScreenProps<RootStackParamList, "SignUp">;
 
+// The public pages on our server (routes/legal.ts): the box links to them
+const LEGAL_URL = `${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/legal`;
+
 export default function SignUpScreen({ navigation }: Props) {
   const dispatch = useDispatch();
 
@@ -23,6 +29,7 @@ export default function SignUpScreen({ navigation }: Props) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [accepted, setAccepted] = useState(false);
 
   const handleSubmit = () => {
     setError("");
@@ -30,7 +37,7 @@ export default function SignUpScreen({ navigation }: Props) {
     fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/users/signup`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, email, password }),
+      body: JSON.stringify({ username, email, password, acceptedTerms: accepted }),
     })
       .then((response) => response.json())
       .then((data) => {
@@ -76,10 +83,35 @@ export default function SignUpScreen({ navigation }: Props) {
         value={password}
         onChangeText={setPassword}
       />
+      <View style={styles.consentRow}>
+        <TouchableOpacity
+          onPress={() => setAccepted(!accepted)}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: accepted }}
+        >
+          <Ionicons name={accepted ? "checkbox" : "square-outline"} size={26} color={colors.accent} />
+        </TouchableOpacity>
+
+        <Text style={styles.consentText}>
+          J&apos;ai 15 ans ou plus et j&apos;accepte les{" "}
+          <Text style={styles.consentLink} onPress={() => Linking.openURL(`${LEGAL_URL}/cgu`)}>
+            CGU
+          </Text>{" "}
+          et la{" "}
+          <Text style={styles.consentLink} onPress={() => Linking.openURL(`${LEGAL_URL}/confidentialite`)}>
+            politique de confidentialité
+          </Text>
+          .
+        </Text>
+      </View>
 
       {error !== "" && <Text style={styles.error}>{error}</Text>}
 
-      <TouchableOpacity style={styles.button} onPress={handleSubmit}>
+      <TouchableOpacity
+        style={[styles.button, !accepted && styles.buttonDisabled]}
+        onPress={handleSubmit}
+        disabled={!accepted}
+      >
         <Text style={styles.buttonText}>S'inscrire</Text>
       </TouchableOpacity>
 
@@ -134,4 +166,24 @@ const styles = StyleSheet.create({
     marginTop: 20,
     textDecorationLine: "underline",
   },
+  consentRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 12,
+  },
+  consentText: {
+    flex: 1,
+    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  consentLink: {
+    color: colors.text,
+    textDecorationLine: "underline",
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+
 });

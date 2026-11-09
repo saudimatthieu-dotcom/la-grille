@@ -31,6 +31,12 @@ router.post("/signup", (req, res) => {
     return;
   }
 
+  // The "15 ans ou plus + CGU" box: without it, no account. A real `true`, not just any filled value
+  if (req.body.acceptedTerms !== true) {
+    res.json({ result: false, error: "You must accept the terms" });
+    return;
+  }
+
   if (findBannedWord(String(req.body.username))) {
     res.json({ result: false, error: "Username contains forbidden words" });
     return;
@@ -49,6 +55,7 @@ router.post("/signup", (req, res) => {
       email: req.body.email,
       password: hash,
       token: uid2(32),
+      termsAcceptedAt: new Date(),
     });
 
     newUser.save().then((newDoc) => {
