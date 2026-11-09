@@ -77,8 +77,8 @@ router.get("/cgu", (req, res) => {
   <p>Tu pronostiques des matchs et des courses, seul ou dans des ligues avec tes amis, et tu marques des points
      selon tes résultats. La Grille n'est pas un site de paris : aucune somme d'argent n'est demandée pour jouer
      ni pour gagner des points.</p>
-  <p>[À COMPLÉTER : les lots éventuels (par exemple le gagnant du mois), qui les offre, comment ils sont
-     attribués. Voir le document juridique : ce point est le plus sensible.]</p>
+  <p><strong>La Grille ne propose aucun lot</strong> (ni argent, ni cadeau, ni bon d'achat) : les classements, les
+     podiums et le titre de gagnant du mois n'ont qu'une valeur honorifique, entre amis.</p>
 
   <h2>3. Ton compte</h2>
   <ul>
