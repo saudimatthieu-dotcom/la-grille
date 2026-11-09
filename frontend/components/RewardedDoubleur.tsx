@@ -19,6 +19,17 @@ type Props = {
 // Google confirms the ad to our server a few seconds after it ends: the stock is read again after that
 const REFRESH_DELAYS_MS = [3000, 8000];
 
+// The server counts an ad a little after it ends. Until then the ad still looks available, and a second video
+// would be watched for nothing: the button stays closed for this long after a reward
+const AD_COOLDOWN_MS = 60000;
+
+// When a reward was last earned, per league. Outside the component on purpose: the BonusBar can rebuild the
+// button (new screen visit), and a state would be lost with it
+const lastRewardAt = new Map<string, number>();
+
+const isCoolingDown = (leagueId: string) => Date.now() - (lastRewardAt.get(leagueId) ?? 0) < AD_COOLDOWN_MS;
+
+
 // "Watch an ad (30 s) = +1 Doubleur this week, in this league" — the doubleur is granted by the server, not here
 export default function RewardedDoubleur(props: Props) {
   const ads = useAds();
@@ -65,6 +76,7 @@ function RewardedDoubleurButton({
     }
 
     handled.current = true;
+    lastRewardAt.set(leagueId, Date.now());
     setMessage("Bien joué ! Ton Doubleur arrive…");
 
     // Google's TEST ads never call our server: in test mode the app asks for the doubleur itself
@@ -87,9 +99,11 @@ function RewardedDoubleurButton({
       });
   }, [earnedReward, leagueId, token, onReward]);
 
-  if (message) {
-    return <Text style={styles.message}>{message}</Text>;
+  // Also true after a rebuild: `message` is empty again, but the cooldown remembers
+  if (message || isCoolingDown(leagueId)) {
+    return <Text style={styles.message}>{message || "Ton Doubleur arrive…"}</Text>;
   }
+
 
   if (status === "no-fill" || status === "error") {
     return (
