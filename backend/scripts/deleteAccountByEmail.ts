@@ -1,5 +1,4 @@
 import "dotenv/config";
-import mongoose from "mongoose";
 import "../models/connection";
 import User from "../models/users";
 import { deleteUserData } from "../modules/deleteAccount";
@@ -13,7 +12,9 @@ async function main() {
         return;
     }
 
-    const user = await User.findOne({ email });
+    // Collation strength 2 = ignores upper/lower case, so "Marie@Gmail.com" finds "marie@gmail.com"
+    const user = await User.findOne({ email: email.trim() }).collation({ locale: "en", strength: 2 });
+
     if (!user) {
         console.log("No user with this email");
         return;
@@ -30,10 +31,9 @@ async function main() {
     console.log("Deleted");
 }
 
-
-main()
-  .catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-  })
-  .finally(() => process.exit());
+    main()
+    .catch((error) => {
+        console.error(error);
+        process.exitCode = 1;
+    })
+    .finally(() => process.exit());
