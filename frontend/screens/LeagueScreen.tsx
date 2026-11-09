@@ -6,6 +6,7 @@ import type { RootStackParamList } from "../App";
 import { colors } from "../config/theme";
 import type { LeagueTab } from "../types";
 import LeagueChat from "../components/LeagueChat";
+import LastGridButton from "../components/LastGridButton";
 import LeagueHeader from "../components/LeagueHeader";
 import LeagueRanking from "../components/LeagueRanking";
 import WeekGrid from "../components/WeekGrid";
@@ -34,6 +35,7 @@ export default function LeagueScreen({ route }: Props) {
 
       {tab === "grid" && (
         <ScrollView contentContainerStyle={styles.content}>
+          <LastGridButton leagueId={leagueId} leagueName={leagueName} />
           <WeekGrid leagueId={leagueId} leagueName={leagueName} />
         </ScrollView>
       )}
