@@ -2,6 +2,7 @@ import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import Constants from "expo-constants";
 import { Platform } from "react-native";
+import { savePushToken } from "../data/users";
 
 // Asks permission, gets this phone's Expo push token and saves it on my account (PUT /users/me/push-token)
 // Same code for Android and iPhone: Expo's push service talks to Firebase (Android) or Apple (iOS) for us
@@ -42,13 +43,8 @@ export async function registerPush(token: string): Promise<void> {
     // Copy it into expo.dev/notifications to send a test push
     console.log("Expo push token:", pushToken);
 
-    const response = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/users/me/push-token`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      // platform: "android" or "ios" — the backend accepts both
-      body: JSON.stringify({ token, pushToken, platform: Platform.OS }),
-    });
-    const data = await response.json();
+    // platform: "android" or "ios" — the backend accepts both
+    const data = await savePushToken({ token, pushToken, platform: Platform.OS });
 
     if (!data.result) {
       console.log("Push token not saved:", data.error);

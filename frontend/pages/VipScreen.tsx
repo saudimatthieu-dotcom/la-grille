@@ -5,7 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { RootStackParamList } from "../App";
 import { colors } from "../config/theme";
 import { VIP_PERKS } from "../config/vip";
-import { useMe } from "../utils/useMe";
+import { useMe } from "../data/useMe";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Vip">;
 

@@ -12,6 +12,7 @@ import { colors } from "../config/theme";
 import { GRID_TYPES } from "../config/gridTypes";
 import ProgressBar from "../components/ProgressBar";
 import { ordinal } from "../utils/format";
+import { loadMyLeagues } from "../data/leagues";
 
 type League = {
   _id: string;
@@ -41,8 +42,7 @@ export default function LeaguesListScreen({ navigation }: Props) {
       return;
     }
 
-    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/leagues/user/${token}`)
-      .then((response) => response.json())
+    loadMyLeagues(token)
       .then((data) => {
         if (data.result) {
           setLeagues(data.leagues);
@@ -97,7 +97,7 @@ export default function LeaguesListScreen({ navigation }: Props) {
       </View>
 
       {leagues.length === 0 ? (
-        <Text style={styles.empty}>Tu n'as encore aucune ligue.</Text>
+        <Text style={styles.empty}>Tu n&apos;as encore aucune ligue.</Text>
       ) : (
         leagueCards
       )}

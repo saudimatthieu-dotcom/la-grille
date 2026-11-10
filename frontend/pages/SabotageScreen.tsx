@@ -9,6 +9,7 @@ import { colors } from "../config/theme";
 import TacticIcon from "../components/TacticIcon";
 import { SPORT_ICONS } from "../config/sports";
 import type { SportEvent } from "../types";
+import { loadSabotageTargets, sendSabotage } from "../data/tactics";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Sabotage">;
 
@@ -21,8 +22,7 @@ export default function SabotageScreen({ navigation, route }: Props) {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/tactics/sabotage/${leagueId}/${targetUserId}/${token}`)
-      .then((response) => response.json())
+    loadSabotageTargets(leagueId, targetUserId, token)
       .then((data) => {
         if (data.result) {
           setEvents(data.events);
@@ -31,16 +31,11 @@ export default function SabotageScreen({ navigation, route }: Props) {
         }
         setIsLoaded(true);
       })
-      .catch(() => setError("Impossible to connect to server"));
+      .catch(() => setError("Impossible de contacter le serveur"));
   }, [leagueId, targetUserId, token]);
 
   const sabotage = (event: SportEvent) => {
-    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/tactics/sabotage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, leagueId, targetUserId, eventId: event._id }),
-    })
-      .then((response) => response.json())
+    sendSabotage({ token, leagueId, targetUserId, eventId: event._id })
       .then((data) => {
         if (data.result) {
           Alert.alert("Sabotage lancé", `Réponse quand le match sera joué… sauf si ${targetUsername} a un Bouclier !`);
@@ -49,7 +44,7 @@ export default function SabotageScreen({ navigation, route }: Props) {
           setError(data.error);
         }
       })
-      .catch(() => setError("Impossible to connect to server"));
+      .catch(() => setError("Impossible de contacter le serveur"));
   };
 
   // A sabotage can't be undone: ask first

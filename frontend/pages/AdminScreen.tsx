@@ -6,23 +6,12 @@ import { Ionicons } from "@expo/vector-icons";
 
 import type { RootState, RootStackParamList } from "../App";
 import { colors } from "../config/theme";
+import VipPlayerRow, { type Player } from "../components/VipPlayerRow";
+import { findPlayers, importMatches, saveVip } from "../data/admin";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Admin">;
 
 // One player of the search, as GET /admin/users sends it
-type Player = {
-  _id: string;
-  username: string;
-  email: string;
-  isVip: boolean;
-  vipUntil: string | null;
-};
-
-// "8 nov. 2026"
-function formatFullDate(date: string) {
-  return new Date(date).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
-}
-
 // For the admin accounts: pick the grids' matches, and hand out the VIP pass (until in-app payment exists)
 export default function AdminScreen({ navigation }: Props) {
   const token = useSelector((state: RootState) => state.user.value.token);
@@ -39,16 +28,11 @@ export default function AdminScreen({ navigation }: Props) {
     setIsImporting(true);
     setImportMessage("");
 
-    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/admin/import`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token }),
-    })
-      .then((response) => response.json())
+    importMatches({ token })
       .then((data) => {
         setImportMessage(data.result ? `${data.imported} matchs importés pour les ${data.days} prochains jours ✓` : data.error);
       })
-      .catch(() => setImportMessage("Impossible to connect to server"))
+      .catch(() => setImportMessage("Impossible de contacter le serveur"))
       .finally(() => setIsImporting(false));
   };
 
@@ -62,8 +46,7 @@ export default function AdminScreen({ navigation }: Props) {
       return;
     }
 
-    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/admin/users/${token}?search=${encodeURIComponent(text.trim())}`)
-      .then((response) => response.json())
+    findPlayers(token, text)
       .then((data) => {
         if (data.result) {
           setPlayers(data.users);
@@ -71,19 +54,14 @@ export default function AdminScreen({ navigation }: Props) {
           setError(data.error);
         }
       })
-      .catch(() => setError("Impossible to connect to server"));
+      .catch(() => setError("Impossible de contacter le serveur"));
   };
 
   // months: added to what's left of the pass — 0 takes it away
   const giveVip = (userId: string, months: number) => {
     setError("");
 
-    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/admin/vip`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, userId, months }),
-    })
-      .then((response) => response.json())
+    saveVip({ token, userId, months })
       .then((data) => {
         if (data.result) {
           setPlayers(players.map((player) => (player._id === userId ? data.user : player)));
@@ -91,32 +69,11 @@ export default function AdminScreen({ navigation }: Props) {
           setError(data.error);
         }
       })
-      .catch(() => setError("Impossible to connect to server"));
+      .catch(() => setError("Impossible de contacter le serveur"));
   };
 
   const playerRows = players.map((player) => (
-    <View key={player._id} style={styles.player}>
-      <View style={styles.playerInfo}>
-        <Text style={styles.playerName}>{player.username}</Text>
-        <Text style={styles.muted}>{player.email}</Text>
-        <Text style={[styles.status, player.isVip && styles.statusVip]}>
-          {player.isVip && player.vipUntil ? `VIP jusqu'au ${formatFullDate(player.vipUntil)}` : "Pas VIP"}
-        </Text>
-      </View>
-      <View style={styles.actions}>
-        <TouchableOpacity style={styles.smallButton} onPress={() => giveVip(player._id, 1)}>
-          <Text style={styles.smallButtonText}>+1 mois</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.smallButton} onPress={() => giveVip(player._id, 12)}>
-          <Text style={styles.smallButtonText}>+1 an</Text>
-        </TouchableOpacity>
-        {player.isVip && (
-          <TouchableOpacity style={styles.removeButton} onPress={() => giveVip(player._id, 0)}>
-            <Text style={styles.removeText}>Retirer</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    </View>
+    <VipPlayerRow key={player._id} player={player} onGive={(months) => giveVip(player._id, months)} />
   ));
 
   return (
@@ -263,58 +220,5 @@ const styles = StyleSheet.create({
   muted: {
     color: colors.muted,
     fontSize: 13,
-  },
-  player: {
-    backgroundColor: colors.card,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
-    gap: 10,
-  },
-  playerInfo: {
-    gap: 2,
-  },
-  playerName: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: "800",
-  },
-  status: {
-    color: colors.muted,
-    fontSize: 13,
-    fontWeight: "700",
-    marginTop: 4,
-  },
-  statusVip: {
-    color: colors.gold,
-  },
-  actions: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  smallButton: {
-    backgroundColor: colors.accent,
-    borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  smallButtonText: {
-    color: colors.bg,
-    fontSize: 13,
-    fontWeight: "800",
-  },
-  removeButton: {
-    borderColor: colors.danger,
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  removeText: {
-    color: colors.danger,
-    fontSize: 13,
-    fontWeight: "800",
   },
 });

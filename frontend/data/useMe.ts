@@ -4,6 +4,7 @@ import { useSelector } from "react-redux";
 
 import type { RootState } from "../App";
 import type { Me } from "../types";
+import { loadMe } from "../data/users";
 
 // My profile, read again every time the screen comes into view: an admin can give or take the VIP pass at any time
 export function useMe() {
@@ -17,8 +18,7 @@ export function useMe() {
       return;
     }
 
-    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/users/me/${token}`)
-      .then((response) => response.json())
+    loadMe(token)
       .then((data) => {
         if (data.result) {
           setMe(data.user);

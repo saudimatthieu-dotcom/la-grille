@@ -10,6 +10,7 @@ import Countdown from "../components/Countdown";
 import BonusBar from "../components/BonusBar";
 import TeamLogo from "../components/TeamLogo";
 import type { BonusKind } from "../types";
+import { savePrediction } from "../data/predictions";
 
 type Props = NativeStackScreenProps<RootStackParamList, "OverUnderPrediction">;
 
@@ -47,25 +48,20 @@ export default function OverUnderPredictionScreen({ navigation, route }: Props) 
     setError("");
 
     if (!winner || !overUnder) {
-      setError("Answer both questions");
+      setError("Réponds aux deux questions");
       return;
     }
 
-    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/predictions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        token,
-        gridId,
-        eventId: event._id,
-        // The league this prediction is for (none: the public league)
-        leagueId,
-        payload: { winner, overUnder },
-        // The bonus goes with it (null: none) — checked before anything is saved
-        bonus,
-      }),
+    savePrediction({
+      token,
+      gridId,
+      eventId: event._id,
+      // The league this prediction is for (none: the public league)
+      leagueId,
+      payload: { winner, overUnder },
+      // The bonus goes with it (null: none) — checked before anything is saved
+      bonus,
     })
-      .then((response) => response.json())
       .then((data) => {
         if (data.result) {
           navigation.goBack();
@@ -73,7 +69,7 @@ export default function OverUnderPredictionScreen({ navigation, route }: Props) 
           setError(data.error);
         }
       })
-      .catch(() => setError("Impossible to connect to server"));
+      .catch(() => setError("Impossible de contacter le serveur"));
   };
 
   return (

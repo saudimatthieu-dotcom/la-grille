@@ -4,7 +4,7 @@ import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
 
 import { BANNER_UNIT_ID } from "../config/ads";
 import { useAds } from "../utils/ads";
-import { useMe } from "../utils/useMe";
+import { useMe } from "../data/useMe";
 
 // An ad banner across the screen — never for VIP members (the client's rule: VIP = no ads),
 // nor when the player refused ads, nor when there's no ad to show (no empty gap left behind)

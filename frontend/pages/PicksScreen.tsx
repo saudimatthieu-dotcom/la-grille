@@ -6,17 +6,17 @@ import { Ionicons } from "@expo/vector-icons";
 
 import type { RootState, RootStackParamList } from "../App";
 import { colors } from "../config/theme";
-import { SPORT_ICONS } from "../config/sports";
 import { GRID_TYPES } from "../config/gridTypes";
 import type { PickEvent } from "../types";
-import { eventTitle, formatDay, formatTime, formatWeek } from "../utils/format";
+import PickRow from "../components/PickRow";
+import WeekPicker from "../components/WeekPicker";
+import { formatWeek } from "../utils/format";
+import { loadPicks, savePicks } from "../data/picks";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Picks">;
 
 // The grid types whose matches the admins pick (sur-mesure leagues pick their own)
 const ADMIN_TYPES = GRID_TYPES.filter((type) => type.value !== "surmesure");
-
-const WEEK_LABELS = ["Cette semaine", "Semaine prochaine", "Dans 2 semaines", "Dans 3 semaines"];
 
 // The matches of a week, ticked by hand: by an admin for a grid type, or by the VIP owner of a sur-mesure league
 export default function PicksScreen({ navigation, route }: Props) {
@@ -58,10 +58,7 @@ export default function PicksScreen({ navigation, route }: Props) {
     setError("");
     setMessage("");
 
-    const query = leagueId ? `leagueId=${leagueId}` : `gridType=${gridType}`;
-
-    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/picks/${token}?${query}&offset=${offset}`)
-      .then((response) => response.json())
+    loadPicks(token, leagueId ? { leagueId } : { gridType }, offset)
       .then((data) => {
         if (data.result) {
           showWeek(data);
@@ -69,7 +66,7 @@ export default function PicksScreen({ navigation, route }: Props) {
           setError(data.error);
         }
       })
-      .catch(() => setError("Impossible to connect to server"));
+      .catch(() => setError("Impossible de contacter le serveur"));
   }, [token, leagueId, gridType, offset]);
 
   const toggle = (eventId: string) => {
@@ -82,12 +79,7 @@ export default function PicksScreen({ navigation, route }: Props) {
     setError("");
     setMessage("");
 
-    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/picks`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, ...owner, offset, eventIds }),
-    })
-      .then((response) => response.json())
+    savePicks({ token, ...owner, offset, eventIds })
       .then((data) => {
         if (data.result) {
           showWeek(data);
@@ -96,7 +88,7 @@ export default function PicksScreen({ navigation, route }: Props) {
           setError(data.error);
         }
       })
-      .catch(() => setError("Impossible to connect to server"));
+      .catch(() => setError("Impossible de contacter le serveur"));
   };
 
   const hasChanges = picked.length !== savedPicked.length || picked.some((id) => !savedPicked.includes(id));
@@ -111,39 +103,9 @@ export default function PicksScreen({ navigation, route }: Props) {
     </TouchableOpacity>
   ));
 
-  const rows = events.map((event) => {
-    const isPicked = picked.includes(event._id);
-    // A match that has started can't be added any more (it can still be taken out if nobody predicted it)
-    const isDisabled = event.isLocked && !isPicked;
-
-    return (
-      <TouchableOpacity
-        key={event._id}
-        style={[styles.row, isDisabled && styles.rowDisabled]}
-        onPress={() => toggle(event._id)}
-        disabled={isDisabled}
-      >
-        <View style={styles.kickoff}>
-          <Text style={styles.kickoffTime}>{formatTime(event.startsAt)}</Text>
-          <Text style={styles.kickoffDay} numberOfLines={1} adjustsFontSizeToFit>
-            {formatDay(event.startsAt)}
-          </Text>
-        </View>
-        <View style={styles.rowBody}>
-          <Text style={styles.rowTitle}>{eventTitle(event)}</Text>
-          <View style={styles.rowInfoLine}>
-            <Ionicons name={SPORT_ICONS[event.sport]} size={14} color={colors.accent} />
-            <Text style={styles.rowInfo}>{event.competition}</Text>
-          </View>
-        </View>
-        <Ionicons
-          name={isPicked ? "checkbox" : "square-outline"}
-          size={24}
-          color={isPicked ? colors.accent : colors.muted}
-        />
-      </TouchableOpacity>
-    );
-  });
+  const rows = events.map((event) => (
+    <PickRow key={event._id} event={event} isPicked={picked.includes(event._id)} onToggle={() => toggle(event._id)} />
+  ));
 
   return (
     <View style={styles.container}>
@@ -160,26 +122,7 @@ export default function PicksScreen({ navigation, route }: Props) {
 
         {!leagueId && <View style={styles.chips}>{typeChips}</View>}
 
-        <View style={styles.weekNav}>
-          <TouchableOpacity onPress={() => setOffset(offset - 1)} disabled={offset === 0}>
-            <Ionicons name="chevron-back-circle" size={30} color={offset === 0 ? colors.border : colors.accent} />
-          </TouchableOpacity>
-          <View style={styles.weekLabel}>
-            <Text style={styles.weekTitle}>{WEEK_LABELS[offset]}</Text>
-            {week > 0 && (
-              <Text style={styles.weekDates}>
-                Semaine {week} · {formatWeek(season, week)}
-              </Text>
-            )}
-          </View>
-          <TouchableOpacity onPress={() => setOffset(offset + 1)} disabled={offset >= maxOffset}>
-            <Ionicons
-              name="chevron-forward-circle"
-              size={30}
-              color={offset >= maxOffset ? colors.border : colors.accent}
-            />
-          </TouchableOpacity>
-        </View>
+        <WeekPicker offset={offset} maxOffset={maxOffset} season={season} week={week} onChange={setOffset} />
 
         <Text style={styles.hint}>
           {picked.length === 0
@@ -270,28 +213,6 @@ const styles = StyleSheet.create({
   chipTextSelected: {
     color: colors.bg,
   },
-  weekNav: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: colors.card,
-    borderRadius: 14,
-    padding: 10,
-    marginBottom: 12,
-  },
-  weekLabel: {
-    alignItems: "center",
-  },
-  weekTitle: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: "900",
-  },
-  weekDates: {
-    color: colors.muted,
-    fontSize: 12,
-    marginTop: 2,
-  },
   hint: {
     color: colors.muted,
     fontSize: 13,
@@ -302,56 +223,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     textAlign: "center",
     marginTop: 24,
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    backgroundColor: colors.card,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
-  },
-  rowDisabled: {
-    opacity: 0.4,
-  },
-  kickoff: {
-    width: 72,
-    alignItems: "center",
-    paddingRight: 12,
-    borderRightWidth: 1,
-    borderRightColor: colors.border,
-  },
-  kickoffTime: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: "900",
-    fontVariant: ["tabular-nums"],
-  },
-  kickoffDay: {
-    color: colors.muted,
-    fontSize: 11,
-    marginTop: 2,
-  },
-  rowBody: {
-    flex: 1,
-  },
-  rowTitle: {
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: "800",
-  },
-  rowInfoLine: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 2,
-  },
-  rowInfo: {
-    color: colors.muted,
-    fontSize: 13,
   },
   footer: {
     padding: 20,

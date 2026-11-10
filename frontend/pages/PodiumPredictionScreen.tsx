@@ -9,6 +9,7 @@ import { colors } from "../config/theme";
 import Countdown from "../components/Countdown";
 import BonusBar from "../components/BonusBar";
 import type { BonusKind, PredictionPayload } from "../types";
+import { savePrediction } from "../data/predictions";
 
 type Props = NativeStackScreenProps<RootStackParamList, "PodiumPrediction">;
 
@@ -55,19 +56,14 @@ export default function PodiumPredictionScreen({ navigation, route }: Props) {
     setError("");
 
     if (picks.length < slotLabels.length) {
-      setError("Fill every slot");
+      setError("Remplis toutes les places");
       return;
     }
 
     const payload =
       event.sport === "tennis" ? { winner: picks[0], finalist: picks[1] } : { podium: picks };
 
-    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/predictions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, gridId, eventId: event._id, leagueId, payload, bonus }),
-    })
-      .then((response) => response.json())
+    savePrediction({ token, gridId, eventId: event._id, leagueId, payload, bonus })
       .then((data) => {
         if (data.result) {
           navigation.goBack();
@@ -75,7 +71,7 @@ export default function PodiumPredictionScreen({ navigation, route }: Props) {
           setError(data.error);
         }
       })
-      .catch(() => setError("Impossible to connect to server"));
+      .catch(() => setError("Impossible de contacter le serveur"));
   };
 
   const slots = slotLabels.map((label, index) => (

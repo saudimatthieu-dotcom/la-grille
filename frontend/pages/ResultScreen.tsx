@@ -6,22 +6,11 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 
 import type { RootState, RootStackParamList } from "../App";
 import { colors } from "../config/theme";
-import { SPORT_ICONS } from "../config/sports";
-import type { TacticKind } from "../config/bonuses";
-import TacticIcon from "../components/TacticIcon";
-import type { Bonus, PredictionPayload, SportEvent } from "../types";
-import { eventTitle, formatDate, formatPayload, formatResult, formatWeek, ordinal } from "../utils/format";
+import ResultCard, { type ResultItem } from "../components/ResultCard";
+import { formatWeek, ordinal } from "../utils/format";
+import { loadResults } from "../data/predictions";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Result">;
-
-type ResultItem = {
-  event: SportEvent;
-  payload: PredictionPayload | null;
-  bonus: Bonus | null;
-  points: number | null;
-  sabotaged: boolean;
-  shieldTriggered: boolean;
-};
 
 type Results = {
   season: number;
@@ -35,26 +24,6 @@ type Results = {
   passed: string[];
 };
 
-// Short tags explaining the points, each with its neon icon: Doubleur, Saboté…
-function tagsOf(item: ResultItem) {
-  const tags: { kind: TacticKind; label: string }[] = [];
-
-  if (item.sabotaged) {
-    tags.push(
-      item.shieldTriggered ? { kind: "bouclier", label: "Sabotage bloqué" } : { kind: "sabotage", label: "Saboté" }
-    );
-  } else if (item.bonus?.bouclier) {
-    tags.push({ kind: "bouclier", label: "Bouclier" });
-  }
-  if (item.bonus?.doubleur) {
-    tags.push({ kind: "doubleur", label: "Doubleur" });
-  }
-  if (item.bonus?.assurance) {
-    tags.push({ kind: "assurance", label: "Assurance" });
-  }
-  return tags;
-}
-
 export default function ResultScreen({ navigation, route }: Props) {
   const { gridId, leagueId, leagueName } = route.params;
   const token = useSelector((state: RootState) => state.user.value.token);
@@ -64,10 +33,7 @@ export default function ResultScreen({ navigation, route }: Props) {
 
   useEffect(() => {
     // With a league, the points count its sabotages and I get my rank in it
-    const query = leagueId ? `?leagueId=${leagueId}` : "";
-
-    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/predictions/results/${gridId}/${token}${query}`)
-      .then((response) => response.json())
+    loadResults(gridId, token, leagueId)
       .then((json) => {
         if (json.result) {
           setData(json);
@@ -75,40 +41,10 @@ export default function ResultScreen({ navigation, route }: Props) {
           setError(json.error);
         }
       })
-      .catch(() => setError("Impossible to connect to server"));
+      .catch(() => setError("Impossible de contacter le serveur"));
   }, [gridId, leagueId, token]);
 
-  const rows = (data?.results ?? []).map((item) => {
-    const tags = tagsOf(item);
-
-    return (
-      <View key={item.event._id} style={styles.card}>
-        <View style={styles.cardHeader}>
-          <Ionicons name={SPORT_ICONS[item.event.sport]} size={20} color={colors.accent} />
-          <Text style={styles.cardTitle}>{eventTitle(item.event)}</Text>
-          <Text style={styles.score}>{formatResult(item.event)}</Text>
-        </View>
-        <Text style={styles.cardDate}>{formatDate(item.event.startsAt)}</Text>
-
-        <Text style={styles.label}>TON PRONO</Text>
-        <Text style={styles.prono}>{item.payload ? formatPayload(item.event, item.payload) : "Pas de prono"}</Text>
-
-        <View style={styles.cardFooter}>
-          <View style={styles.tags}>
-            {tags.map((tag) => (
-              <View key={tag.label} style={styles.tag}>
-                <TacticIcon kind={tag.kind} size={32} />
-                <Text style={styles.tagText}>{tag.label}</Text>
-              </View>
-            ))}
-          </View>
-          <View style={styles.pointsBadge}>
-            <Text style={styles.pointsText}>{item.points != null ? `+${item.points} pts` : "—"}</Text>
-          </View>
-        </View>
-      </View>
-    );
-  });
+  const rows = (data?.results ?? []).map((item) => <ResultCard key={item.event._id} item={item} />);
 
   const rankDelta = data && data.rankBefore !== null && data.rankNow !== null ? data.rankBefore - data.rankNow : 0;
 
@@ -267,75 +203,6 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 15,
     marginBottom: 16,
-  },
-  card: {
-    backgroundColor: colors.card,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
-  },
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 10,
-  },
-  cardTitle: {
-    flex: 1,
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: "800",
-  },
-  cardDate: {
-    color: colors.muted,
-    fontSize: 13,
-    marginTop: 4,
-  },
-  score: {
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: "900",
-  },
-  prono: {
-    color: colors.text,
-    fontSize: 14,
-    marginTop: 2,
-  },
-  cardFooter: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 10,
-  },
-  tags: {
-    flex: 1,
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  tag: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  tagText: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  pointsBadge: {
-    borderColor: colors.accent,
-    borderWidth: 1.5,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  pointsText: {
-    color: colors.accent,
-    fontSize: 15,
-    fontWeight: "900",
   },
   button: {
     backgroundColor: colors.accent,

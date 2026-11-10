@@ -9,6 +9,7 @@ import { colors } from "../config/theme";
 import { SPORT_ICONS, SPORT_LABELS } from "../config/sports";
 import ProgressBar from "../components/ProgressBar";
 import TacticIcon from "../components/TacticIcon";
+import { loadMyStats } from "../data/users";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Stats">;
 
@@ -38,8 +39,7 @@ export default function StatsScreen({ navigation }: Props) {
   const [isVipOnly, setIsVipOnly] = useState(false);
 
   useEffect(() => {
-    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/users/me/stats/${token}`)
-      .then((response) => response.json())
+    loadMyStats(token)
       .then((data) => {
         if (data.result) {
           setStats(data.stats);
@@ -49,7 +49,7 @@ export default function StatsScreen({ navigation }: Props) {
           setError(data.error);
         }
       })
-      .catch(() => setError("Impossible to connect to server"));
+      .catch(() => setError("Impossible de contacter le serveur"));
   }, [token]);
 
   const sportRows = (stats?.bySport ?? []).map((row) => (

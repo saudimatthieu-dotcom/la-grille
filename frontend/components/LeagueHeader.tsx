@@ -9,6 +9,7 @@ import type { RootState, RootStackParamList } from "../App";
 import { colors } from "../config/theme";
 import type { LeagueTab } from "../types";
 import { ordinal } from "../utils/format";
+import { loadRanking } from "../data/leagues";
 
 type Props = {
   leagueId: string;
@@ -33,8 +34,7 @@ export default function LeagueHeader({ leagueId, leagueName, active, onTabChange
   const [isPublic, setIsPublic] = useState(false);
 
   useEffect(() => {
-    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/leagues/${leagueId}/ranking/${token}?scope=season`)
-      .then((response) => response.json())
+    loadRanking(leagueId, token, "season")
       .then((data) => {
         if (!data.result) {
           return;

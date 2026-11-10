@@ -9,30 +9,20 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 
 import type { RootState, RootStackParamList, TabParamList } from "../App";
 import { colors } from "../config/theme";
-import { GRID_TYPES } from "../config/gridTypes";
 import { splitTacticText } from "../config/bonuses";
 import Avatar from "../components/Avatar";
-import ProgressBar from "../components/ProgressBar";
+import ActionRequired from "../components/ActionRequired";
+import HomeLeagueCard, { type MyLeague } from "../components/HomeLeagueCard";
 import TacticIcon from "../components/TacticIcon";
 import AdBanner from "../components/AdBanner";
-import { ordinal } from "../utils/format";
 import { registerPush } from "../utils/registerPush";
+import { loadMyLeagues } from "../data/leagues";
+import { loadLatestMessages } from "../data/messages";
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<TabParamList, "Accueil">,
   NativeStackScreenProps<RootStackParamList>
 >;
-
-type MyLeague = {
-  _id: string;
-  name: string;
-  gridType: string;
-  members: { user: string }[];
-  myPoints: number;
-  myRank: number;
-  filled: number;
-  total: number | null;
-};
 
 type Latest = { text: string; leagueId: string; leagueName: string } | null;
 
@@ -56,10 +46,7 @@ export default function HomeScreen({ navigation }: Props) {
       return;
     }
 
-    const url = process.env.EXPO_PUBLIC_BACKEND_ADRESS;
-
-    fetch(`${url}/leagues/user/${user.token}`)
-      .then((response) => response.json())
+    loadMyLeagues(user.token)
       .then((data) => {
         if (data.result) {
           setLeagues(data.leagues);
@@ -67,8 +54,7 @@ export default function HomeScreen({ navigation }: Props) {
       })
       .catch(() => {});
 
-    fetch(`${url}/messages/latest/${user.token}`)
-      .then((response) => response.json())
+    loadLatestMessages(user.token)
       .then((data) => {
         if (data.result) {
           setLatest(data.latest);
@@ -80,42 +66,13 @@ export default function HomeScreen({ navigation }: Props) {
   // A grid is "to complete" while I haven't predicted every match (or haven't opened it yet)
   const toComplete = leagues.filter((league) => league.total === null || league.filled < league.total).length;
 
-  const leagueCards = leagues.map((league) => {
-    const gridType = GRID_TYPES.find((type) => type.value === league.gridType);
-    const isComplete = league.total !== null && league.filled >= league.total;
-
-    return (
-      <TouchableOpacity
-        key={league._id}
-        style={styles.card}
-        onPress={() => navigation.navigate("League", { leagueId: league._id, leagueName: league.name })}
-      >
-        <View style={styles.cardIcon}>
-          <Ionicons name={gridType?.icon ?? "trophy-outline"} size={24} color={colors.accent} />
-        </View>
-
-        <View style={styles.cardBody}>
-          <View style={styles.cardTitleRow}>
-            <Text style={styles.cardTitle}>{league.name}</Text>
-            <View style={[styles.dot, { backgroundColor: isComplete ? colors.accent : colors.danger }]} />
-          </View>
-          <Text style={styles.cardType}>Grille {gridType?.label.toLowerCase()}</Text>
-          <Text style={styles.cardInfo}>
-            {league.myRank === 1 && league.myPoints > 0 ? "👑 " : ""}
-            {ordinal(league.myRank)} / {league.members.length} · {league.myPoints} pts
-          </Text>
-          <View style={styles.progressRow}>
-            <View style={styles.progressBar}>
-              <ProgressBar value={league.filled} max={league.total ?? 10} />
-            </View>
-            <Text style={styles.progressText}>
-              {league.filled}/{league.total ?? 10}
-            </Text>
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
-  });
+  const leagueCards = leagues.map((league) => (
+    <HomeLeagueCard
+      key={league._id}
+      league={league}
+      onPress={() => navigation.navigate("League", { leagueId: league._id, leagueName: league.name })}
+    />
+  ));
 
   // The latest news, its emoji split off (a bonus or a sabotage gets its neon icon)
   const news = latest ? splitTacticText(latest.text) : null;
@@ -140,20 +97,7 @@ export default function HomeScreen({ navigation }: Props) {
         <Image source={require("../assets/logo.png")} style={styles.mascot} resizeMode="contain" />
       </View>
 
-      {toComplete > 0 && (
-        <View style={styles.action}>
-          <View style={styles.actionTitleRow}>
-            <Ionicons name="flash" size={20} color={colors.accent} />
-            <Text style={styles.actionLabel}>ACTION REQUISE</Text>
-          </View>
-          <Text style={styles.actionText}>
-            {toComplete} grille{toComplete > 1 ? "s" : ""} à compléter
-          </Text>
-          <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate("Grille")}>
-            <Text style={styles.actionButtonText}>VOIR MES GRILLES →</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+      {toComplete > 0 && <ActionRequired count={toComplete} onPress={() => navigation.navigate("Grille")} />}
 
       <View style={styles.sectionRow}>
         <Text style={styles.section}>Mes ligues</Text>
@@ -236,42 +180,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 4,
   },
-  action: {
-    borderColor: colors.accent,
-    borderWidth: 1.5,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 24,
-    gap: 8,
-  },
-  actionTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  actionLabel: {
-    color: colors.accent,
-    fontSize: 12,
-    fontWeight: "900",
-    letterSpacing: 1,
-  },
-  actionText: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: "800",
-  },
-  actionButton: {
-    alignSelf: "flex-start",
-    backgroundColor: colors.accent,
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-  },
-  actionButtonText: {
-    color: colors.bg,
-    fontSize: 13,
-    fontWeight: "900",
-  },
   sectionRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -299,56 +207,10 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 10,
   },
-  cardIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    borderColor: colors.accent,
-    borderWidth: 1.5,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cardBody: {
-    flex: 1,
-  },
-  cardTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
   cardTitle: {
     color: colors.text,
     fontSize: 16,
     fontWeight: "800",
-  },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  cardType: {
-    color: colors.muted,
-    fontSize: 12,
-    marginTop: 1,
-  },
-  cardInfo: {
-    color: colors.text,
-    fontSize: 13,
-    fontWeight: "700",
-    marginTop: 2,
-  },
-  progressRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 6,
-  },
-  progressBar: {
-    flex: 1,
-  },
-  progressText: {
-    color: colors.muted,
-    fontSize: 12,
   },
   news: {
     flexDirection: "row",

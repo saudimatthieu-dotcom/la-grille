@@ -9,6 +9,7 @@ import RewardedDoubleur from "./RewardedDoubleur";
 import { colors } from "../config/theme";
 import type { BonusKind } from "../types";
 import { maxPoints } from "../utils/format";
+import { loadBonuses } from "../data/tactics";
 
 type Props = {
   sport: string;
@@ -48,10 +49,7 @@ export default function BonusBar({ sport, gridId, leagueId, predictionId, value,
       return;
     }
 
-    const query = predictionId ? `&predictionId=${predictionId}` : "";
-
-    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/tactics/bonus/${gridId}/${token}?leagueId=${leagueId}${query}`)
-      .then((response) => response.json())
+    loadBonuses(gridId, token, leagueId, predictionId)
       .then((data) => {
         if (data.result) {
           setLeague(data.league);
@@ -59,7 +57,7 @@ export default function BonusBar({ sport, gridId, leagueId, predictionId, value,
           setError(data.error);
         }
       })
-      .catch(() => setError("Impossible to connect to server"));
+      .catch(() => setError("Impossible de contacter le serveur"));
   }, [gridId, leagueId, predictionId, token, refreshCount]);
 
   const max = maxPoints(sport);

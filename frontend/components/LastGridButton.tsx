@@ -8,6 +8,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { RootState, RootStackParamList } from "../App";
 import { colors } from "../config/theme";
 import { formatWeek } from "../utils/format";
+import { loadRanking } from "../data/leagues";
 
 type Props = {
   leagueId: string;
@@ -29,19 +30,14 @@ export default function LastGridButton({ leagueId, leagueName }: Props) {
   const [lastGrid, setLastGrid] = useState<LastGrid | null>(null);
 
   useEffect(() => {
-    const url = `${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/leagues/${leagueId}/ranking/${token}?scope=week`;
-
     // Two calls: this week's answer says which week came before, and that week's answer holds its grid id
-    fetch(url)
-      .then((response) => response.json())
+    loadRanking(leagueId, token, "week")
       .then((data) => {
         if (!data.result || !data.previous) {
           return null;
         }
 
-        return fetch(`${url}&season=${data.previous.season}&week=${data.previous.week}`).then((response) =>
-          response.json()
-        );
+        return loadRanking(leagueId, token, "week", data.previous);
       })
       .then((data) => {
         if (data?.result && data.gridId) {

@@ -7,6 +7,7 @@ import type { RootState } from "../App";
 import { colors } from "../config/theme";
 import { DEFAULT_SEASON_WEEKS, MAX_SEASON_WEEKS, MIN_SEASON_WEEKS } from "../config/vip";
 import type { SeasonInfo } from "../types";
+import { loadSeason, restartSeason } from "../data/leagues";
 
 type Props = {
   leagueId: string;
@@ -36,8 +37,7 @@ export default function SeasonBanner({ leagueId, onRestart }: Props) {
       return;
     }
 
-    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/leagues/${leagueId}/season/${token}`)
-      .then((response) => response.json())
+    loadSeason(leagueId, token)
       .then((data) => {
         if (data.result) {
           setSeason(data.season);
@@ -46,19 +46,14 @@ export default function SeasonBanner({ leagueId, onRestart }: Props) {
           }
         }
       })
-      .catch(() => setError("Impossible to connect to server"));
+      .catch(() => setError("Impossible de contacter le serveur"));
   }, [isFocused, leagueId, token]);
 
   const handleRestart = () => {
     setError("");
 
-    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/leagues/${leagueId}/restart`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      // Only a VIP creator's length is used: the server gives 10 weeks to the others
-      body: JSON.stringify({ token, seasonWeeks: season?.canChooseLength ? Number(weeks) : undefined }),
-    })
-      .then((response) => response.json())
+    // Only a VIP creator's length is used: the server gives 10 weeks to the others
+      restartSeason(leagueId, { token, seasonWeeks: season?.canChooseLength ? Number(weeks) : undefined })
       .then((data) => {
         if (data.result) {
           setSeason(data.season);
@@ -67,7 +62,7 @@ export default function SeasonBanner({ leagueId, onRestart }: Props) {
           setError(data.error);
         }
       })
-      .catch(() => setError("Impossible to connect to server"));
+      .catch(() => setError("Impossible de contacter le serveur"));
   };
 
   if (!season) {

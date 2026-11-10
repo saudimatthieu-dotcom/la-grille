@@ -8,7 +8,8 @@ import type { RootState, RootStackParamList } from "../App";
 import { colors } from "../config/theme";
 import { GRID_TYPES } from "../config/gridTypes";
 import { DEFAULT_SEASON_WEEKS, FREE_LEAGUE_MAX_MEMBERS, MAX_SEASON_WEEKS, MIN_SEASON_WEEKS } from "../config/vip";
-import { useMe } from "../utils/useMe";
+import { useMe } from "../data/useMe";
+import { createLeague, joinLeague } from "../data/leagues";
 
 type Props = NativeStackScreenProps<RootStackParamList, "CreateLeague">;
 
@@ -28,12 +29,7 @@ export default function CreateLeagueScreen({ navigation }: Props) {
   const handleCreate = () => {
     setError("");
 
-    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/leagues`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, name, gridType, seasonWeeks: isVip ? Number(seasonWeeks) : undefined }),
-    })
-      .then((response) => response.json())
+    createLeague({ token, name, gridType, seasonWeeks: isVip ? Number(seasonWeeks) : undefined })
       .then((data) => {
         if (data.result) {
           navigation.goBack();
@@ -41,18 +37,13 @@ export default function CreateLeagueScreen({ navigation }: Props) {
           setError(data.error);
         }
       })
-      .catch(() => setError("Impossible to connect to server"));
+      .catch(() => setError("Impossible de contacter le serveur"));
   };
 
   const handleJoin = () => {
     setError("");
 
-    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/leagues/join`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, code }),
-    })
-      .then((response) => response.json())
+    joinLeague({ token, code })
       .then((data) => {
         if (data.result) {
           navigation.goBack();
@@ -60,7 +51,7 @@ export default function CreateLeagueScreen({ navigation }: Props) {
           setError(data.error);
         }
       })
-      .catch(() => setError("Impossible to connect to server"));
+      .catch(() => setError("Impossible de contacter le serveur"));
   };
 
   const gridTypeOptions = GRID_TYPES.map((type) => {

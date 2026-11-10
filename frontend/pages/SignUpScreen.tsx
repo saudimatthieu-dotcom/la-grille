@@ -1,37 +1,41 @@
 import { useState } from "react";
 import {
   KeyboardAvoidingView,
+  Linking,
   Platform,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useDispatch } from "react-redux";
 
 import type { RootStackParamList } from "../App";
 import { login } from "../reducers/user";
 import { colors } from "../config/theme";
+import { signUp } from "../data/users";
 
-type Props = NativeStackScreenProps<RootStackParamList, "SignIn">;
+type Props = NativeStackScreenProps<RootStackParamList, "SignUp">;
 
-export default function SignInScreen({ navigation }: Props) {
+// The public pages on our server (routes/legal.ts): the box links to them
+const LEGAL_URL = `${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/legal`;
+
+export default function SignUpScreen({ navigation }: Props) {
   const dispatch = useDispatch();
 
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [accepted, setAccepted] = useState(false);
 
   const handleSubmit = () => {
     setError("");
 
-    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/users/signin`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    })
-      .then((response) => response.json())
+    signUp({ username, email, password, acceptedTerms: accepted })
       .then((data) => {
         if (data.result) {
           dispatch(login({ token: data.token, ...data.user }));
@@ -48,8 +52,16 @@ export default function SignInScreen({ navigation }: Props) {
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <Text style={styles.title}>Se connecter</Text>
+      <Text style={styles.title}>Créer un compte</Text>
 
+      <TextInput
+        style={styles.input}
+        placeholder="Pseudo"
+        placeholderTextColor={colors.muted}
+        autoCapitalize="none"
+        value={username}
+        onChangeText={setUsername}
+      />
       <TextInput
         style={styles.input}
         placeholder="Email"
@@ -67,19 +79,40 @@ export default function SignInScreen({ navigation }: Props) {
         value={password}
         onChangeText={setPassword}
       />
+      <View style={styles.consentRow}>
+        <TouchableOpacity
+          onPress={() => setAccepted(!accepted)}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: accepted }}
+        >
+          <Ionicons name={accepted ? "checkbox" : "square-outline"} size={26} color={colors.accent} />
+        </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => navigation.navigate("ForgotPassword")}>
-        <Text style={styles.forgot}>Mot de passe oublié ?</Text>
-      </TouchableOpacity>
+        <Text style={styles.consentText}>
+          J&apos;ai 15 ans ou plus et j&apos;accepte les{" "}
+          <Text style={styles.consentLink} onPress={() => Linking.openURL(`${LEGAL_URL}/cgu`)}>
+            CGU
+          </Text>{" "}
+          et la{" "}
+          <Text style={styles.consentLink} onPress={() => Linking.openURL(`${LEGAL_URL}/confidentialite`)}>
+            politique de confidentialité
+          </Text>
+          .
+        </Text>
+      </View>
 
       {error !== "" && <Text style={styles.error}>{error}</Text>}
 
-      <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-        <Text style={styles.buttonText}>Connexion</Text>
+      <TouchableOpacity
+        style={[styles.button, !accepted && styles.buttonDisabled]}
+        onPress={handleSubmit}
+        disabled={!accepted}
+      >
+        <Text style={styles.buttonText}>S&apos;inscrire</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => navigation.navigate("SignUp")}>
-        <Text style={styles.link}>Pas encore de compte ? S'inscrire</Text>
+      <TouchableOpacity onPress={() => navigation.navigate("SignIn")}>
+        <Text style={styles.link}>Déjà un compte ? Se connecter</Text>
       </TouchableOpacity>
     </KeyboardAvoidingView>
   );
@@ -107,11 +140,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 12,
   },
-  forgot: {
-    color: colors.muted,
-    textAlign: "right",
-    marginBottom: 12,
-  },
   error: {
     color: colors.danger,
     marginBottom: 12,
@@ -134,4 +162,24 @@ const styles = StyleSheet.create({
     marginTop: 20,
     textDecorationLine: "underline",
   },
+  consentRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 12,
+  },
+  consentText: {
+    flex: 1,
+    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  consentLink: {
+    color: colors.text,
+    textDecorationLine: "underline",
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+
 });

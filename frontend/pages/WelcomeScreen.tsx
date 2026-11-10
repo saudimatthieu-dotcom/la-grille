@@ -18,7 +18,7 @@ export default function WelcomeScreen({ navigation }: Props) {
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => navigation.navigate("SignIn")}>
-        <Text style={styles.link}>J'ai déjà un compte</Text>
+        <Text style={styles.link}>J&apos;ai déjà un compte</Text>
       </TouchableOpacity>
     </View>
   );

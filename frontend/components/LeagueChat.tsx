@@ -10,6 +10,7 @@ import { splitTacticText } from "../config/bonuses";
 import type { ChatMessage } from "../types";
 import Avatar from "./Avatar";
 import TacticIcon from "./TacticIcon";
+import { loadLeagueMessages, saveChatNotifications, sendMessage } from "../data/messages";
 
 type Props = {
   leagueId: string;
@@ -32,8 +33,7 @@ export default function LeagueChat({ leagueId }: Props) {
   // Loads the chat now, then every 10 seconds while the tab is open (leaving the tab stops it)
   useEffect(() => {
     const loadMessages = () => {
-      fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/messages/league/${leagueId}/${token}`)
-        .then((response) => response.json())
+      loadLeagueMessages(leagueId, token)
         .then((data) => {
           if (data.result) {
             setMessages(data.messages);
@@ -42,7 +42,7 @@ export default function LeagueChat({ leagueId }: Props) {
             setError(data.error);
           }
         })
-        .catch(() => setError("Impossible to connect to server"));
+        .catch(() => setError("Impossible de contacter le serveur"));
     };
 
     loadMessages();
@@ -58,12 +58,7 @@ export default function LeagueChat({ leagueId }: Props) {
 
     setError("");
 
-    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/messages/league/${leagueId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, text }),
-    })
-      .then((response) => response.json())
+    sendMessage(leagueId, { token, text })
       .then((data) => {
         if (data.result) {
           setMessages([...messages, data.message]);
@@ -72,7 +67,7 @@ export default function LeagueChat({ leagueId }: Props) {
           setError(data.error);
         }
       })
-      .catch(() => setError("Impossible to connect to server"));
+      .catch(() => setError("Impossible de contacter le serveur"));
   };
 
   // Switches this league's chat push on/off — shown at once, put back if the server refuses
@@ -85,12 +80,7 @@ export default function LeagueChat({ leagueId }: Props) {
     setChatNotifications(!previous);
     setError("");
 
-    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/messages/league/${leagueId}/notifications`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, enabled: !previous }),
-    })
-      .then((response) => response.json())
+    saveChatNotifications(leagueId, { token, enabled: !previous })
       .then((data) => {
         if (!data.result) {
           setChatNotifications(previous);
@@ -99,7 +89,7 @@ export default function LeagueChat({ leagueId }: Props) {
       })
       .catch(() => {
         setChatNotifications(previous);
-        setError("Impossible to connect to server");
+        setError("Impossible de contacter le serveur");
       });
   };
 

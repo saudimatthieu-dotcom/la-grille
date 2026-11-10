@@ -7,6 +7,7 @@ import type { RootState } from "../App";
 import { REWARDED_UNIT_ID } from "../config/ads";
 import { colors } from "../config/theme";
 import { useAds } from "../utils/ads";
+import { claimTestReward, loadAdsConfig } from "../data/ads";
 
 type Props = {
   leagueId: string;
@@ -80,18 +81,13 @@ function RewardedDoubleurButton({
     setMessage("Bien joué ! Ton Doubleur arrive…");
 
     // Google's TEST ads never call our server: in test mode the app asks for the doubleur itself
-    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/ads/config`)
-      .then((response) => response.json())
+    loadAdsConfig()
       .then((config) => {
         if (!config.testRewards) {
           return;
         }
 
-        return fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/ads/reward-test`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token, leagueId }),
-        });
+        return claimTestReward({ token, leagueId });
       })
       .catch(() => {})
       .finally(() => {

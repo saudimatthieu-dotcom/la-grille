@@ -13,6 +13,7 @@ import { useDispatch } from "react-redux";
 import type { RootStackParamList } from "../App";
 import { login } from "../reducers/user";
 import { colors } from "../config/theme";
+import { askResetCode, resetPassword } from "../data/users";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ForgotPassword">;
 
@@ -29,12 +30,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
   const handleSendCode = () => {
     setError("");
 
-    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/users/forgot-password`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
-    })
-      .then((response) => response.json())
+    askResetCode({ email })
       .then((data) => {
         if (data.result) {
           setStep("code");
@@ -48,12 +44,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
   const handleReset = () => {
     setError("");
 
-    fetch(`${process.env.EXPO_PUBLIC_BACKEND_ADRESS}/users/reset-password`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, code, password }),
-    })
-      .then((response) => response.json())
+    resetPassword({ email, code, password })
       .then((data) => {
         if (data.result) {
           // The new password logs me in straight away
