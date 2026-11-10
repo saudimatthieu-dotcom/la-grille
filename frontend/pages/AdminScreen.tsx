@@ -7,7 +7,8 @@ import { Ionicons } from "@expo/vector-icons";
 import type { RootState, RootStackParamList } from "../App";
 import { colors } from "../config/theme";
 import VipPlayerRow, { type Player } from "../components/VipPlayerRow";
-import { findPlayers, importMatches, saveVip } from "../data/admin";
+import { findPlayers, saveVip } from "../data/admin";
+import { useImport } from "../data/useImport";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Admin">;
 
@@ -19,22 +20,19 @@ export default function AdminScreen({ navigation }: Props) {
   const [search, setSearch] = useState("");
   const [players, setPlayers] = useState<Player[]>([]);
   const [error, setError] = useState("");
-  // The month's import takes 1 to 2 minutes: the button waits and then says how many matches came in
-  const [isImporting, setIsImporting] = useState(false);
-  const [importMessage, setImportMessage] = useState("");
+  // The month's import runs in the background on the server: this follows it
+  const { status: importStatus, error: importError, start: startImport } = useImport(token);
 
-  // Imports every match of the coming month from the sports APIs
-  const handleImport = () => {
-    setIsImporting(true);
-    setImportMessage("");
-
-    importMatches({ token })
-      .then((data) => {
-        setImportMessage(data.result ? `${data.imported} matchs importés pour les ${data.days} prochains jours ✓` : data.error);
-      })
-      .catch(() => setImportMessage("Impossible de contacter le serveur"))
-      .finally(() => setIsImporting(false));
-  };
+  // What the import says: how far it is, or how it ended — and which competitions failed
+  let importMessage = importError;
+  if (importStatus?.running) {
+    importMessage = `${importStatus.done} / ${importStatus.total} : ${importStatus.current ?? "…"}`;
+  } else if (importStatus?.finishedAt) {
+    importMessage = `${importStatus.imported} matchs importés ✓`;
+    if (importStatus.failed.length > 0) {
+      importMessage += `\nÉchec : ${importStatus.failed.join(", ")}. Relance l'import dans quelques minutes.`;
+    }
+  }
 
   // Searches as the admin types — from 2 letters, on the username or the email
   const handleSearch = (text: string) => {
@@ -87,17 +85,18 @@ export default function AdminScreen({ navigation }: Props) {
 
       <Text style={styles.section}>Matchs</Text>
       <TouchableOpacity
-        style={[styles.importButton, isImporting && styles.buttonDisabled]}
-        onPress={handleImport}
-        disabled={isImporting}
+        style={[styles.importButton, importStatus?.running && styles.buttonDisabled]}
+        onPress={startImport}
+        disabled={importStatus?.running}
       >
         <Ionicons name="cloud-download-outline" size={20} color={colors.accent} />
-        <Text style={styles.importText}>{isImporting ? "IMPORT EN COURS… (1 À 2 MIN)" : "IMPORTER LES MATCHS DU MOIS"}</Text>
+        <Text style={styles.importText}>{importStatus?.running ? "IMPORT EN COURS…" : "IMPORTER LES MATCHS DU MOIS"}</Text>
       </TouchableOpacity>
       {importMessage !== "" && <Text style={styles.importMessage}>{importMessage}</Text>}
       <Text style={styles.hint}>
-        Foot, rugby, basket et F1 des 31 prochains jours (5 matchs par journée de championnat, les week-ends pour la
-        NBA). À relancer quand tu veux : les matchs déjà importés sont mis à jour, pas dupliqués.
+        Foot, rugby, basket et F1 des 31 prochains jours (les week-ends pour la NBA). L&apos;import tourne en arrière-plan
+        et peut durer 15 minutes ou plus : tu peux quitter l&apos;écran. À relancer quand tu veux : les matchs déjà importés
+        sont mis à jour, pas dupliqués.
       </Text>
 
       <Text style={styles.section}>Grilles</Text>

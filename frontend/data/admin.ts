@@ -15,3 +15,8 @@ export function findPlayers(token: Token, search: string) {
 export function saveVip(body: { token: Token; userId: string; months: number }) {
   return send("PUT", "/admin/vip", body);
 }
+
+// How the month import is going (it runs in the background on the server)
+export function loadImportStatus(token: Token) {
+  return load(`/admin/import/${token}`);
+}

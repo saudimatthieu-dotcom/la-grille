@@ -17,7 +17,7 @@ import { awardMonthlyPrize } from "../modules/monthlyPrize";
 import type { Result } from "../modules/scoring";
 import { fetchEventResult } from "../providers/thesportsdb";
 import { fetchRacePodium } from "../providers/jolpica";
-import { IMPORT_DAYS, importUpcomingEvents } from "../modules/importEvents";
+import { getImportStatus, IMPORT_DAYS, startImport } from "../modules/importEvents";
 import { NOTIFICATION_TEXTS, sendPush } from "../modules/sendPush";
 import type { NotificationKind } from "../modules/sendPush";
 import { notifyClosingSoon, notifyNewGrid, notifyResults } from "../modules/gamePush";
@@ -34,18 +34,15 @@ router.post("/sync-events", (req, res) => {
   sendImport(res);
 });
 
-// Answers with the number of matches imported — takes 1 to 2 minutes
+// Starts the import and answers at once: it runs in the background (15 minutes or more on the free key).
+// GET /admin/import/:token tells how it is going
 function sendImport(res: express.Response) {
-  importUpcomingEvents()
-    .then((imported) => {
-      if (imported === null) {
-        res.json({ result: false, error: "An import is already running" });
-        return;
-      }
+  if (!startImport()) {
+    res.json({ result: false, error: "An import is already running", status: getImportStatus() });
+    return;
+  }
 
-      res.json({ result: true, imported, days: IMPORT_DAYS });
-    })
-    .catch(() => res.json({ result: false, error: "Sports API unavailable" }));
+  res.json({ result: true, started: true, days: IMPORT_DAYS, status: getImportStatus() });
 }
 
 // At most this many matches per call: TheSportsDB's free key allows 30 calls a minute (2.1 s pause before each),
@@ -269,6 +266,18 @@ router.post("/import", (req, res) => {
     }
 
     sendImport(res);
+  });
+});
+
+// GET /admin/import/:token — how the import is going (the admin screen asks every few seconds)
+router.get("/import/:token", (req, res) => {
+  findAdminUser(req.params.token).then((admin) => {
+    if (!admin) {
+      res.json({ result: false, error: "Forbidden" });
+      return;
+    }
+
+    res.json({ result: true, status: getImportStatus() });
   });
 });
 

@@ -8,7 +8,7 @@ const API_KEY = process.env.THESPORTSDB_KEY || "123";
 // Statuses TheSportsDB uses for a finished match
 const FINISHED_STATUSES = ["FT", "AOT", "AET", "PEN", "Match Finished"];
 
-// The free key allows 30 calls a minute: the import waits this long before each call, one call at a time
+// Calls are spaced out: the import waits this long before each call, one call at a time
 const CALL_GAP_MS = 2100;
 
 // A round number can't loop forever: a month is 5 rounds at most (one a week)
@@ -41,19 +41,33 @@ function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-// One call to the API, after a pause — the import and the results make their calls one after the other.
-// A refusal (403 dead key, 429 too many calls) answers text, not JSON: we say so instead of a JSON parse error
-function callApi(path: string) {
-  return wait(CALL_GAP_MS)
-    .then(() => fetch(`${BASE_URL}/${API_KEY}/${path}`))
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error(`TheSportsDB answered ${response.status}`);
-      }
+// The free key lets about 11 calls through, then answers 429 "come back in 2 minutes" (header retry-after)
+const DEFAULT_RETRY_SECONDS = 120;
+// A patient call waits and tries again this many times before giving up
+const MAX_RETRIES = 3;
 
-      return response.json() as Promise<ApiResponse>;
-    })
-    .then((data) => data.events ?? []);
+// One call to the API, after a pause — the import and the results make their calls one after the other.
+// A refusal (403 dead key, 429 too many calls) answers text, not JSON: we say so instead of a JSON parse error.
+// patient: on a 429, wait as long as the API asks and try again (the month import — it takes a while, nobody is
+// waiting for the answer). Not patient (the results, called every hour): fail at once, the next call tries again
+export async function callApi(path: string, patient = false): Promise<ApiEvent[]> {
+  for (let attempt = 0; ; attempt++) {
+    await wait(CALL_GAP_MS);
+    const response = await fetch(`${BASE_URL}/${API_KEY}/${path}`);
+
+    if (response.status === 429 && patient && attempt < MAX_RETRIES) {
+      const seconds = Number(response.headers.get("retry-after")) || DEFAULT_RETRY_SECONDS;
+      await wait((seconds + 1) * 1000);
+      continue;
+    }
+
+    if (!response.ok) {
+      throw new Error(`TheSportsDB answered ${response.status}`);
+    }
+
+    const data = (await response.json()) as ApiResponse;
+    return data.events ?? [];
+  }
 }
 
 // An API match in the shape of our Event model
@@ -79,7 +93,7 @@ function fetchRounds(competition: Competition, season: string, round: number, un
     return Promise.resolve([]);
   }
 
-  return callApi(`eventsround.php?id=${competition.leagueId}&r=${round}&s=${season}`).then((events) => {
+  return callApi(`eventsround.php?id=${competition.leagueId}&r=${round}&s=${season}`, true).then((events) => {
     const starts = events.filter((event) => event.strTimestamp).map((event) => toDate(event.strTimestamp as string));
     const isPastWindow = starts.length > 0 && starts.every((date) => date > until);
 
@@ -121,13 +135,13 @@ export function fetchEventsUntil(competition: Competition, until: Date) {
     request = weekendDays(now, until).reduce(
       (previous, day) =>
         previous.then((collected) =>
-          callApi(`eventsday.php?d=${day}&l=${competition.leagueId}`).then((events) => [...collected, ...events])
+          callApi(`eventsday.php?d=${day}&l=${competition.leagueId}`, true).then((events) => [...collected, ...events])
         ),
       Promise.resolve([] as ApiEvent[])
     );
   } else {
     // The next match tells which round and season we're in: the month starts from that round
-    request = callApi(`eventsnextleague.php?id=${competition.leagueId}`).then((nextEvents) => {
+    request = callApi(`eventsnextleague.php?id=${competition.leagueId}`, true).then((nextEvents) => {
       const next = nextEvents[0];
       const round = Number(next?.intRound);
 
@@ -151,7 +165,7 @@ export function fetchEventsUntil(competition: Competition, until: Date) {
 
 // Final score of one event, or null if it isn't finished yet
 export function fetchEventResult(externalId: string) {
-  // callApi: the 2.1 s pause keeps us under the 30 calls a minute
+  // callApi, not patient: the pause between calls is kept, and a 429 fails this call (the next hourly call retries)
   return callApi(`lookupevent.php?id=${externalId}`)
     .then((events) => {
       const event = events[0];
