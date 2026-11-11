@@ -17,6 +17,12 @@ export const THESPORTSDB_COMPETITIONS: Competition[] = [
   { leagueId: "4328", sport: "football", competition: "Premier League" },
   { leagueId: "4335", sport: "football", competition: "Liga" },
   { leagueId: "4332", sport: "football", competition: "Serie A" },
+  { leagueId: "4401", sport: "football", competition: "Ligue 2" },
+  { leagueId: "4484", sport: "football", competition: "Coupe de France" },
+  { leagueId: "4480", sport: "football", competition: "Ligue des champions" },
+  { leagueId: "4481", sport: "football", competition: "Ligue Europa" },
+  { leagueId: "5071", sport: "football", competition: "Ligue Europa Conférence" },
+  { leagueId: "4490", sport: "football", competition: "Ligue des nations" },
   { leagueId: "4346", sport: "football", competition: "MLS" },
   { leagueId: "4849", sport: "football", competition: "Women's Super League" },
   // Over/under lines are a game setting (no free API gives betting lines)
@@ -24,6 +30,7 @@ export const THESPORTSDB_COMPETITIONS: Competition[] = [
   { leagueId: "4423", sport: "basket", competition: "Betclic Élite", ouLine: 165.5 },
   { leagueId: "4430", sport: "rugby", competition: "Top 14", ouLine: 42.5 },
   { leagueId: "4414", sport: "rugby", competition: "Premiership", ouLine: 50.5 },
+  { leagueId: "4714", sport: "rugby", competition: "Tournoi des Six Nations", ouLine: 46.5 },
   { leagueId: "4536", sport: "handball", competition: "Starligue", ouLine: 58.5 },
   // American sports — the lines are estimates, to adjust with the clients
   { leagueId: "4391", sport: "americanfootball", competition: "NFL", ouLine: 45.5 },
