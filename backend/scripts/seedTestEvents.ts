@@ -17,7 +17,7 @@ const databaseName = connectionString ? new URL(connectionString).pathname.slice
 const DRIVERS = ["Norris", "Verstappen", "Hadjar", "Piastri", "Leclerc", "Hamilton", "Russell", "Antonelli"];
 
 type Seed = {
-  sport: "football" | "basket" | "rugby" | "handball" | "f1" | "cyclisme" | "tennis";
+  sport: "football" | "basket" | "rugby" | "handball" | "americanfootball" | "hockey" | "baseball" | "f1" | "cyclisme" | "tennis";
   competition: string;
   // Kick-off: this many hours from now
   hours: number;
@@ -45,8 +45,12 @@ const SEEDS: Seed[] = [
   { sport: "rugby", competition: "Top 14", hours: 54, home: "Clermont", away: "Toulon", ouLine: 42.5, result: { homeScore: 24, awayScore: 20 } },
   { sport: "rugby", competition: "Premiership", hours: 56, home: "Leicester", away: "Bath", ouLine: 50.5, result: { homeScore: 18, awayScore: 22 } },
   // Handball: no prediction screen and no scoring in the app yet
-  { sport: "handball", competition: "LNH Division 1", hours: 33, home: "Nantes", away: "Chambéry", result: { homeScore: 31, awayScore: 28 } },
-  { sport: "handball", competition: "EHF Champions League Women", hours: 80, home: "Metz", away: "Győr", result: { homeScore: 27, awayScore: 30 } },
+  { sport: "handball", competition: "LNH Division 1", hours: 33, home: "Nantes", away: "Chambéry", ouLine: 58.5, result: { homeScore: 31, awayScore: 28 } },
+  { sport: "handball", competition: "EHF Champions League Women", hours: 80, home: "Metz", away: "Győr", ouLine: 56.5, result: { homeScore: 27, awayScore: 30 } },
+  // American sports
+  { sport: "americanfootball", competition: "NFL", hours: 57, home: "Giants", away: "Commanders", ouLine: 45.5, result: { homeScore: 24, awayScore: 27 } },
+  { sport: "hockey", competition: "NHL", hours: 58, home: "Kraken", away: "Hurricanes", ouLine: 5.5, result: { homeScore: 3, awayScore: 2 } },
+  { sport: "baseball", competition: "MLB", hours: 59, home: "Yankees", away: "Dodgers", ouLine: 8.5, result: { homeScore: 4, awayScore: 6 } },
   // F1: a podium of 3 among the drivers
   {
     sport: "f1",

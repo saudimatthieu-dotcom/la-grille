@@ -1,7 +1,8 @@
 // Which matches each type of grid plays — from the client's brief:
 //   Officielle = all sports, including some women's matches
 //   Classique  = the popular sports (foot, rugby, basket, tennis)
-//   Exotique   = NO foot, NO rugby, NO NBA — but F1, MMA, cycling, handball, baseball
+//   Exotique   = NO foot, NO rugby, NO NBA — but F1, MMA, cycling, handball, baseball, and the other
+//                American sports (NFL, NHL)
 // The weekly grid holds every match; each league sees the part of it that fits its type.
 
 type GridEvent = {
@@ -11,8 +12,8 @@ type GridEvent = {
 
 const CLASSIQUE_SPORTS = ["football", "rugby", "basket", "tennis"];
 
-// "mma" and "baseball" aren't imported yet: they're listed so they join the grid as soon as they are
-const EXOTIQUE_SPORTS = ["f1", "mma", "cyclisme", "handball", "baseball", "basket"];
+// "mma" isn't imported yet: it's listed so it joins the grid as soon as it is
+const EXOTIQUE_SPORTS = ["f1", "mma", "cyclisme", "handball", "baseball", "americanfootball", "hockey", "basket"];
 
 // Basket is exotique except the NBA (the client's "PAS NBA": the Betclic Élite stays in)
 const EXOTIQUE_EXCLUDED_COMPETITIONS = ["NBA"];

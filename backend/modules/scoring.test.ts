@@ -104,6 +104,10 @@ describe("scorePrediction", () => {
   it("picks the rule for each sport", () => {
     expect(scorePrediction("football", { homeScore: 1, awayScore: 0 }, { homeScore: 1, awayScore: 0 })).toBe(3);
     expect(scorePrediction("rugby", { winner: "away", overUnder: "over" }, { homeScore: 10, awayScore: 40 }, 42.5)).toBe(2);
+    expect(scorePrediction("handball", { winner: "home", overUnder: "over" }, { homeScore: 31, awayScore: 28 }, 58.5)).toBe(2);
+    expect(scorePrediction("americanfootball", { winner: "home", overUnder: "under" }, { homeScore: 20, awayScore: 17 }, 45.5)).toBe(2);
+    expect(scorePrediction("hockey", { winner: "away", overUnder: "under" }, { homeScore: 2, awayScore: 3 }, 5.5)).toBe(2);
+    expect(scorePrediction("baseball", { winner: "home", overUnder: "under" }, { homeScore: 5, awayScore: 4 }, 8.5)).toBe(1);
     expect(scorePrediction("f1", { podium: ["A", "B", "C"] }, { podium: ["A", "B", "C"] })).toBe(6);
     expect(scorePrediction("tennis", { winner: "A", finalist: "B" }, { winner: "A", finalist: "B" })).toBe(3);
   });

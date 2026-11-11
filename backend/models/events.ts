@@ -13,7 +13,7 @@ const participantSchema = new mongoose.Schema({
 const eventSchema = new mongoose.Schema({
   sport: {
     type: String,
-    enum: ["football", "basket", "rugby", "handball", "f1", "cyclisme", "tennis"],
+    enum: ["football", "basket", "rugby", "handball", "americanfootball", "hockey", "baseball", "f1", "cyclisme", "tennis"],
     required: true,
   },
   provider: String,

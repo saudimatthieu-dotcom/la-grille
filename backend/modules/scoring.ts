@@ -52,7 +52,10 @@ export function scoreFootball(payload: Payload, result: Result) {
   return 0;
 }
 
-// Basket & rugby — right winner: 1 pt, right over/under: 1 pt (max 2)
+// The team sports played on the winner and the total of points (basket, rugby, handball, NFL, NHL, MLB)
+export const OVER_UNDER_SPORTS = ["basket", "rugby", "handball", "americanfootball", "hockey", "baseball"];
+
+// Right winner: 1 pt, right over/under: 1 pt (max 2)
 export function scoreOverUnder(payload: Payload, result: Result, ouLine: number) {
   if (result.homeScore === undefined || result.awayScore === undefined) {
     return 0;
@@ -119,7 +122,7 @@ export function scorePrediction(sport: string, payload: Payload, result: Result,
   if (sport === "football") {
     return scoreFootball(payload, result);
   }
-  if (sport === "basket" || sport === "rugby") {
+  if (OVER_UNDER_SPORTS.includes(sport)) {
     return scoreOverUnder(payload, result, ouLine);
   }
   if (sport === "f1" || sport === "cyclisme") {
@@ -136,7 +139,7 @@ export function maxPoints(sport: string) {
   if (sport === "football" || sport === "tennis") {
     return 3;
   }
-  if (sport === "basket" || sport === "rugby") {
+  if (OVER_UNDER_SPORTS.includes(sport)) {
     return 2;
   }
   if (sport === "f1" || sport === "cyclisme") {

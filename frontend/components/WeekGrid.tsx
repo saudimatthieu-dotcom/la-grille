@@ -6,6 +6,7 @@ import { useSelector } from "react-redux";
 import { Ionicons } from "@expo/vector-icons";
 
 import type { RootState, RootStackParamList } from "../App";
+import { OVER_UNDER_SPORTS, PODIUM_SPORTS } from "../config/sports";
 import { colors } from "../config/theme";
 import Countdown from "./Countdown";
 import MatchRow from "./MatchRow";
@@ -94,9 +95,9 @@ export default function WeekGrid({ leagueId, leagueName }: Props) {
         onPress={() => {
           if (event.sport === "football") {
             navigation.navigate("FootballPrediction", { gridId, event, prediction, leagueId });
-          } else if (event.sport === "basket" || event.sport === "rugby") {
+          } else if (OVER_UNDER_SPORTS.includes(event.sport)) {
             navigation.navigate("OverUnderPrediction", { gridId, event, prediction, leagueId });
-          } else if (event.sport === "f1" || event.sport === "tennis") {
+          } else if (PODIUM_SPORTS.includes(event.sport)) {
             navigation.navigate("PodiumPrediction", { gridId, event, prediction, leagueId });
           }
         }}

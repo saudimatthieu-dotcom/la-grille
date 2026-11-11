@@ -16,7 +16,7 @@ export const GRID_TYPES = [
   {
     value: "exotique",
     label: "Exotique",
-    description: "F1, MMA, vélo, handball, baseball",
+    description: "F1, vélo, handball, sports US (NFL, NHL, MLB)",
     icon: "globe-outline",
     premium: false,
   },

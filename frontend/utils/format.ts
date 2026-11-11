@@ -1,4 +1,5 @@
 import type { PredictionPayload, SportEvent } from "../types";
+import { OVER_UNDER_SPORTS } from "../config/sports";
 
 // "PSG – OM" for team sports, the competition name for F1 and tennis
 export function eventTitle(event: SportEvent) {
@@ -82,7 +83,7 @@ export function maxPoints(sport: string) {
   if (sport === "football" || sport === "tennis") {
     return 3;
   }
-  if (sport === "basket" || sport === "rugby") {
+  if (OVER_UNDER_SPORTS.includes(sport)) {
     return 2;
   }
   if (sport === "f1" || sport === "cyclisme") {

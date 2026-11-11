@@ -7,6 +7,9 @@ const betclic = { sport: "basket", competition: "Betclic Élite" };
 const tennis = { sport: "tennis", competition: "Roland-Garros" };
 const f1 = { sport: "f1", competition: "Grand Prix de Monaco" };
 const handball = { sport: "handball", competition: "Liqui Moly Starligue" };
+const nfl = { sport: "americanfootball", competition: "NFL" };
+const nhl = { sport: "hockey", competition: "NHL" };
+const mlb = { sport: "baseball", competition: "MLB" };
 
 describe("isInGrid", () => {
   it("puts every match in the officielle grid", () => {
@@ -34,6 +37,14 @@ describe("isInGrid", () => {
     expect(isInGrid("exotique", f1)).toBe(true);
     expect(isInGrid("exotique", handball)).toBe(true);
     expect(isInGrid("exotique", betclic)).toBe(true);
+  });
+
+  it("puts the American sports in the exotique grid only", () => {
+    [nfl, nhl, mlb].forEach((event) => {
+      expect(isInGrid("exotique", event)).toBe(true);
+      expect(isInGrid("classique", event)).toBe(false);
+      expect(isInGrid("officielle", event)).toBe(true);
+    });
   });
 
   it("leaves tennis out of the exotique grid: it's a popular sport", () => {

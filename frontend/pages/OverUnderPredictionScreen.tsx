@@ -5,6 +5,7 @@ import { useSelector } from "react-redux";
 import { Ionicons } from "@expo/vector-icons";
 
 import type { RootState, RootStackParamList } from "../App";
+import { DRAW_SPORTS } from "../config/sports";
 import { colors } from "../config/theme";
 import Countdown from "../components/Countdown";
 import BonusBar from "../components/BonusBar";
@@ -102,8 +103,8 @@ export default function OverUnderPredictionScreen({ navigation, route }: Props) 
           selected={winner === "home"}
           onPress={() => setWinner("home")}
         />
-        {/* A draw only in rugby — basket always goes to overtime */}
-        {event.sport === "rugby" && (
+        {/* A draw only where the sport allows one — basket, hockey and baseball always play on to a winner */}
+        {DRAW_SPORTS.includes(event.sport) && (
           <ChoiceButton label="Nul" selected={winner === "draw"} onPress={() => setWinner("draw")} />
         )}
         <ChoiceButton
