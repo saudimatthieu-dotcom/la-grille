@@ -7,7 +7,7 @@ import Prediction from "../models/predictions";
 import Selection from "../models/selections";
 import User from "../models/users";
 import { checkBody } from "../modules/checkBody";
-import { ADMIN_GRID_TYPES, isInGrid } from "../modules/gridTypes";
+import { ADMIN_GRID_TYPES } from "../modules/gridTypes";
 import type { AdminGridType } from "../modules/gridTypes";
 import { findWeekEvents, weekFromNow } from "../modules/selections";
 import { isVip } from "../modules/vip";
@@ -54,8 +54,8 @@ function loadPicker(token: unknown, gridType: unknown, leagueId: unknown) {
 
       return League.find({ gridType: { $in: types } }, "_id").then((leagues) => ({
         owner: { gridType: type, league: null as null },
-        // An admin picks among the matches of the type (exotique: no foot, no rugby, no NBA…)
-        canPick: (event: EventDoc) => isInGrid(type, event),
+        // An admin picks among every match of the week, whatever the grid type: the three lists are the same
+        canPick: () => true,
         leagueIds: leagues.map((league) => league._id),
         userId: user._id,
       }));
