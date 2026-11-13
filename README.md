@@ -8,8 +8,8 @@ Every week, players predict the results of real matches, earn points when they a
 
 ## Features
 
-- **Weekly grids of real matches**: football (Ligue 1, Premier League, Liga, Serie A), basketball (NBA, Betclic Élite), rugby (Top 14, Premiership) and Formula 1
-- **Several kinds of predictions**: match result, over/under on the total score, F1 podium
+- **Weekly grids of real matches** across many sports: football (Ligue 1, Ligue 2, Premier League, Liga, Serie A, MLS, Women's Super League, Champions League, Europa League, Conference League, Nations League, Coupe de France), basketball (NBA, Betclic Élite), rugby (Top 14, Premiership, Six Nations), handball (Starligue), American sports (NFL, NHL, MLB) and Formula 1
+- **Several kinds of predictions**: match result, over/under on the total score (basketball, rugby, handball, NFL, NHL, MLB), F1 podium
 - **Leagues**: private leagues joined with an invite code, plus a public league for every player
 - **Rankings**: weekly, monthly and overall, with seasons and a podium at the end of each season
 - **Bonuses and sabotage**: double your points, protect a prediction, or sabotage a rival
@@ -24,8 +24,8 @@ Every week, players predict the results of real matches, earn points when they a
 | -------- | ------------ |
 | Mobile   | Expo, React Native, TypeScript, React Navigation, Redux Toolkit, redux-persist, expo-notifications |
 | Backend  | Express, TypeScript, MongoDB (Mongoose), bcrypt, uid2 |
-| Tests    | Jest (scoring, rankings, bonuses, seasons, moderation, notifications) |
-| Data     | [TheSportsDB](https://www.thesportsdb.com) (football, basketball, rugby), [Jolpica F1](https://github.com/jolpica/jolpica-f1) (Formula 1) |
+| Tests    | Jest, 140 tests (scoring, rankings, bonuses, seasons, moderation, notifications), run with the type checks by GitHub Actions on every push |
+| Data     | [TheSportsDB](https://www.thesportsdb.com) (football, basketball, rugby, handball, American sports), [Jolpica F1](https://github.com/jolpica/jolpica-f1) (Formula 1) |
 | Hosting  | Render (API), EAS Build (Android app) |
 
 ## Structure
