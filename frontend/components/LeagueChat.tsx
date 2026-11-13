@@ -6,10 +6,8 @@ import { Ionicons } from "@expo/vector-icons";
 
 import type { RootState } from "../App";
 import { colors } from "../config/theme";
-import { splitTacticText } from "../config/bonuses";
 import type { ChatMessage } from "../types";
-import Avatar from "./Avatar";
-import TacticIcon from "./TacticIcon";
+import ChatBubble from "./ChatBubble";
 import { loadLeagueMessages, saveChatNotifications, sendMessage } from "../data/messages";
 
 type Props = {
@@ -93,34 +91,9 @@ export default function LeagueChat({ leagueId }: Props) {
       });
   };
 
-  const bubbles = messages.map((message) => {
-    // System logs (sabotage, bouclier) are centred, like an announcement
-    if (message.type === "system") {
-      // A bonus or a sabotage: its neon icon in place of the emoji the text starts with
-      const { kind, text: systemText } = splitTacticText(message.text);
-
-      return (
-        <View key={message._id} style={styles.systemRow}>
-          {kind && <TacticIcon kind={kind} size={32} />}
-          <Text style={styles.system}>{systemText}</Text>
-        </View>
-      );
-    }
-
-    const isMe = message.user?.username === username;
-    const time = new Date(message.createdAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-
-    return (
-      <View key={message._id} style={[styles.messageRow, isMe && styles.messageRowMe]}>
-        {!isMe && <Avatar avatar={message.user?.avatar} username={message.user?.username} size={30} />}
-        <View style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleOther]}>
-          {!isMe && <Text style={styles.author}>{message.user?.username}</Text>}
-          <Text style={[styles.text, isMe && styles.textMe]}>{message.text}</Text>
-          <Text style={[styles.time, isMe && styles.timeMe]}>{time}</Text>
-        </View>
-      </View>
-    );
-  });
+  const bubbles = messages.map((message) => (
+    <ChatBubble key={message._id} message={message} isMe={message.user?.username === username} />
+  ));
 
   return (
     <View style={styles.container}>
@@ -185,14 +158,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "900",
   },
-  messageRow: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 8,
-  },
-  messageRowMe: {
-    justifyContent: "flex-end",
-  },
   list: {
     flex: 1,
   },
@@ -205,56 +170,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     textAlign: "center",
     marginTop: 40,
-  },
-  systemRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    marginVertical: 6,
-  },
-  system: {
-    flexShrink: 1,
-    color: colors.gold,
-    fontSize: 13,
-    fontWeight: "700",
-    textAlign: "center",
-  },
-  bubble: {
-    maxWidth: "78%",
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  bubbleMe: {
-    alignSelf: "flex-end",
-    backgroundColor: colors.accent,
-  },
-  bubbleOther: {
-    alignSelf: "flex-start",
-    backgroundColor: colors.card,
-  },
-  author: {
-    color: colors.accent,
-    fontSize: 12,
-    fontWeight: "800",
-    marginBottom: 2,
-  },
-  text: {
-    color: colors.text,
-    fontSize: 15,
-  },
-  textMe: {
-    color: colors.bg,
-  },
-  time: {
-    color: colors.muted,
-    fontSize: 11,
-    marginTop: 2,
-    alignSelf: "flex-end",
-  },
-  timeMe: {
-    color: colors.bg,
   },
   error: {
     color: colors.danger,

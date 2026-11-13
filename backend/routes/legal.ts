@@ -105,7 +105,9 @@ router.get("/cgu", (req, res) => {
   <h2>7. Le comportement dans les ligues</h2>
   <p>Le chat et les pseudos doivent rester respectueux : pas d'insultes, de haine, de harcèlement ni de contenu
      illégal. Nous pouvons supprimer un message ou un compte qui ne respecte pas cette règle. Pour signaler un
-     contenu : <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>.</p>
+     message, touche le drapeau à côté de lui dans le chat de la ligue et choisis un motif : un administrateur
+     examine le signalement et peut masquer le message. Tu peux aussi écrire à
+     <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>.</p>
 
   <h2>8. Tes données</h2>
   <p>Elles sont expliquées dans la <a href="/legal/confidentialite">politique de confidentialité</a>.</p>

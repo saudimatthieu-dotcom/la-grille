@@ -15,6 +15,11 @@ export function sendMessage(leagueId: string, body: { token: Token; text: string
   return send("POST", `/messages/league/${leagueId}`, body);
 }
 
+// A player flags another player's message (reason: harcelement, haine, spam or autre)
+export function reportMessage(messageId: string, body: { token: Token; reason: string }) {
+  return send("POST", `/messages/report/${messageId}`, body);
+}
+
 // The bell of one league's chat
 export function saveChatNotifications(leagueId: string, body: { token: Token; enabled: boolean }) {
   return send("PUT", `/messages/league/${leagueId}/notifications`, body);

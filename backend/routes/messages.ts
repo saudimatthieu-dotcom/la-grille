@@ -64,7 +64,12 @@ router.get("/league/:leagueId/:token", (req, res) => {
         // My bell in the Chat tab: do I get a push for each message of this league?
         const me = context.league.members.find((member) => member.user?.equals(context.user._id));
 
-        res.json({ result: true, messages: messages.reverse(), chatNotifications: me?.chatNotifications !== false });
+        // A message hidden by an admin is sent without its text
+        const shown = messages.reverse().map((message) =>
+          message.hidden ? { ...message.toObject(), text: "Message supprimé par la modération." } : message
+        );
+
+        res.json({ result: true, messages: shown, chatNotifications: me?.chatNotifications !== false });
       });
   });
 });

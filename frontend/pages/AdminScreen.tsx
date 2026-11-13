@@ -6,9 +6,11 @@ import { Ionicons } from "@expo/vector-icons";
 
 import type { RootState, RootStackParamList } from "../App";
 import { colors } from "../config/theme";
+import ReportRow from "../components/ReportRow";
 import VipPlayerRow, { type Player } from "../components/VipPlayerRow";
 import { findPlayers, saveVip } from "../data/admin";
 import { useImport } from "../data/useImport";
+import { useReports } from "../data/useReports";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Admin">;
 
@@ -22,6 +24,8 @@ export default function AdminScreen({ navigation }: Props) {
   const [error, setError] = useState("");
   // The month's import runs in the background on the server: this follows it
   const { status: importStatus, error: importError, start: startImport } = useImport(token);
+  // The chat messages reported by the players
+  const { reports, error: reportsError, handle: handleReport } = useReports(token);
 
   // What the import says: how far it is, or how it ended — and which competitions failed
   let importMessage = importError;
@@ -70,6 +74,15 @@ export default function AdminScreen({ navigation }: Props) {
       .catch(() => setError("Impossible de contacter le serveur"));
   };
 
+  const reportRows = reports.map((report) => (
+    <ReportRow
+      key={report._id}
+      report={report}
+      onHide={() => handleReport(report._id, "hide")}
+      onDismiss={() => handleReport(report._id, "dismiss")}
+    />
+  ));
+
   const playerRows = players.map((player) => (
     <VipPlayerRow key={player._id} player={player} onGive={(months) => giveVip(player._id, months)} />
   ));
@@ -108,6 +121,11 @@ export default function AdminScreen({ navigation }: Props) {
         Officielle, Classique, Exotique : coche les matchs de chaque semaine. Rien n&apos;est automatique : sans choix,
         la grille de la semaine reste vide.
       </Text>
+
+      <Text style={styles.section}>Signalements</Text>
+      {reports.length === 0 && <Text style={styles.muted}>Aucun message signalé.</Text>}
+      {reportsError !== "" && <Text style={styles.error}>{reportsError}</Text>}
+      {reportRows}
 
       <Text style={styles.section}>Pass VIP</Text>
       <TextInput
