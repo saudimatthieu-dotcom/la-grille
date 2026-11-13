@@ -6,6 +6,20 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    # A throwaway MongoDB for the route tests that write to a database (routes/reports.test.ts)
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        # The steps only start once MongoDB answers: the app connects once, when it starts
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.runCommand({ping:1}).ok'"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CONNECTION_STRING: mongodb://127.0.0.1:27017/lagrille-test
     defaults:
       run:
         working-directory: backend
