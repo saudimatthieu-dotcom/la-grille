@@ -1,5 +1,7 @@
 # La Grille
 
+![CI](https://github.com/saudimatthieu-dotcom/la-grille/actions/workflows/ci.yml/badge.svg)
+
 A mobile app for sports predictions between friends: no money involved, just for fun and the ranking.
 
 Every week, players predict the results of real matches, earn points when they are right, and compete in private leagues with their friends or in the public league open to everyone.
