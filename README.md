@@ -6,6 +6,8 @@ A mobile app for sports predictions between friends: no money involved, just for
 
 Every week, players predict the results of real matches, earn points when they are right, and compete in private leagues with their friends or in the public league open to everyone.
 
+**Try it (Android):** download the APK from the [v0.1-test release](https://github.com/saudimatthieu-dotcom/la-grille/releases/tag/v0.1-test). It is a test version, not yet published on the Play Store. The free server sleeps when idle, so the first request can take up to a minute.
+
 ## Features
 
 - **Weekly grids of real matches** across many sports: football (Ligue 1, Ligue 2, Premier League, Liga, Serie A, MLS, Women's Super League, Champions League, Europa League, Conference League, Nations League, Coupe de France), basketball (NBA, Betclic Élite), rugby (Top 14, Premiership, Six Nations), handball (Starligue), American sports (NFL, NHL, MLB) and Formula 1
