@@ -28,22 +28,34 @@ Every week, players predict the results of real matches, earn points when they a
 | Data     | [TheSportsDB](https://www.thesportsdb.com) (football, basketball, rugby, handball, American sports), [Jolpica F1](https://github.com/jolpica/jolpica-f1) (Formula 1) |
 | Hosting  | Render (API), EAS Build (Android app) |
 
-## Structure
+## Architecture
 
 ```
 la-grille/
 ├── backend/
-│   ├── routes/       users, leagues, grids, predictions, tactics, messages, picks, admin
+│   ├── routes/       HTTP only: read the request, call the logic, send JSON (one file per area, with route tests)
+│   ├── modules/      the game rules as plain functions: scoring, rankings, bonuses, seasons, moderation, push… (unit-tested)
 │   ├── models/       Mongoose schemas
-│   ├── modules/      game logic (scoring, ranking, bonuses, seasons…) and its tests
-│   ├── providers/    sports data APIs
-│   └── config/       competitions, avatars, word filter
+│   ├── providers/    one adapter per sports API (TheSportsDB, Jolpica F1), all producing the same Event shape
+│   ├── config/       competitions, avatars, word filter
+│   └── scripts/      one-off tools: seed test data, delete an account
 └── frontend/
-    ├── screens/      one file per screen
-    ├── components/   reusable UI (grid, ranking, chat, bonus bar…)
-    ├── reducers/     Redux store
-    └── config/       sports, bonuses, notification settings
+    ├── pages/        one file per screen
+    ├── components/   UI pieces shared between screens (grid, ranking, chat bubble, bonus bar…)
+    ├── data/         every call to the API (saving and loading), and the hooks that follow them
+    ├── reducers/     Redux store (the logged-in user)
+    ├── config/       sports, bonuses, grid types, theme
+    └── utils/        small helpers: formatting, ads, push registration
 ```
+
+**Why it is built this way**
+
+- **Screens never call `fetch`.** All network code lives in `frontend/data/`, behind one `load` / `send` pair that holds the server address and the answer format. A screen only says what it wants (`sendMessage`, `loadReports`), so an API change touches one folder.
+- **Rules are plain functions, away from HTTP.** Scoring, rankings, bonuses and seasons live in `backend/modules/` and take values, not requests. That is why they are easy to test (see Tests) and why a route stays a few lines long.
+- **Sports data is adapted at the edge.** Each provider turns its API into the same `Event` model, saved with an upsert on `{ provider, externalId }`. A rescheduled match is updated, never duplicated, and a new sport is one new entry in `config/competitions.ts` plus its scoring rule.
+- **Slow work runs in the background.** The month's import takes 15 minutes or more on a free API key, so it starts on a request and runs on the server. It waits when the API says "come back in 2 minutes", and the admin screen follows its progress.
+- **Jobs are plain HTTP routes.** Importing matches, fetching results, scoring and notifications are `POST /admin/…` routes protected by a secret, called on a schedule by cron-job.org. Each is safe to call twice: points are only given once, and a player gets a notification once a week.
+- **Small files.** One rule for the whole repo: no file over 300 lines, so each file does one thing and stays readable.
 
 ## Getting started
 
@@ -69,7 +81,22 @@ Environment variables:
 | `MAIL_FROM`         | sender address of those emails, verified in Brevo (Senders & IP → Senders) |
 | `ADS_TEST_REWARDS`  | `true` = the app may grant the ad doubleur after Google's **test** ads (which never call the server). Keep `false` once real ads are live |
 
-Run the tests with `npm test`.
+**Tests**
+
+157 Jest tests: the game rules (scoring, rankings, bonuses, seasons, moderation, notifications) and the API routes, called over HTTP with supertest.
+
+```bash
+npm test                                          # everything that needs no database
+```
+
+The tests that write to a database (`routes/reports.test.ts`) run only when `CONNECTION_STRING` points at a database whose name contains `test`. Locally, with any MongoDB:
+
+```bash
+docker run -d -p 27017:27017 mongo:7             # or: podman run -d -p 27017:27017 docker.io/library/mongo:7
+CONNECTION_STRING=mongodb://127.0.0.1:27017/lagrille-test npm test
+```
+
+GitHub Actions runs the type checks and all 157 tests on every push, with a throwaway MongoDB container.
 
 **Mobile app**
 
