@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 
 import League from "../models/leagues";
 import Message from "../models/messages";
+import Report, { REPORT_REASONS } from "../models/reports";
 import User from "../models/users";
 import { checkBody } from "../modules/checkBody";
 import { notifyChat } from "../modules/chatPush";
@@ -114,6 +115,53 @@ router.get("/latest/:token", (req, res) => {
             latest: message ? { text: message.text, leagueId: league?._id, leagueName: league?.name } : null,
           });
         });
+    });
+  });
+});
+
+// POST /messages/report/:messageId — a member reports a chat message of their league (DSA: a way to flag abuse)
+router.post("/report/:messageId", (req, res) => {
+  if (!checkBody(req.body, ["token", "reason"])) {
+    res.json({ result: false, error: "Missing or empty fields" });
+    return;
+  }
+
+  if (!mongoose.isValidObjectId(req.params.messageId)) {
+    res.json({ result: false, error: "Invalid message id" });
+    return;
+  }
+
+  if (!(REPORT_REASONS as readonly string[]).includes(req.body.reason)) {
+    res.json({ result: false, error: "Invalid reason" });
+    return;
+  }
+
+  Message.findById(req.params.messageId).then((message) => {
+    // Only what a player wrote can be reported, not the game's own logs
+    if (!message || message.type !== "chat") {
+      res.json({ result: false, error: "Message not found" });
+      return;
+    }
+
+    checkMember(req.body.token, String(message.league)).then((context) => {
+      if ("error" in context) {
+        res.json({ result: false, error: context.error });
+        return;
+      }
+
+      if (message.user?.equals(context.user._id)) {
+        res.json({ result: false, error: "You can't report your own message" });
+        return;
+      }
+
+      // Once per player and message: reporting again keeps the first report
+      Report.updateOne(
+        { message: message._id, reporter: context.user._id },
+        { $setOnInsert: { league: message.league, reason: req.body.reason } },
+        { upsert: true }
+      ).then(() => {
+        res.json({ result: true });
+      });
     });
   });
 });
